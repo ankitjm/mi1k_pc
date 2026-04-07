@@ -1,0 +1,3 @@
+{$MI1K_DOMAIN} {
+	reverse_proxy mi1k:3100
+}

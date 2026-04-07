@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ADD COLUMN "model_policy" jsonb DEFAULT '{}'::jsonb NOT NULL;

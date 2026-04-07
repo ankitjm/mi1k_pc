@@ -1,0 +1,24 @@
+services:
+  server:
+    build: .
+    container_name: mi1k
+    restart: unless-stopped
+    ports:
+      - "19001:3100"
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - mi1k-data:/paperclip
+      - /root/.vscode-server/extensions:/root/.vscode-server/extensions:ro
+      - /root/.claude:/root/.claude:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3100/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  mi1k-data:

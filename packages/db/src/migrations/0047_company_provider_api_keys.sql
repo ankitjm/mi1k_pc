@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ADD COLUMN "provider_api_keys" jsonb DEFAULT '{}'::jsonb NOT NULL;
