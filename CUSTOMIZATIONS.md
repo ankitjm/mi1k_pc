@@ -126,3 +126,16 @@ These files exist in upstream but have custom additions. On update, take upstrea
 - `ui/src/components/NewIssueDialog.tsx` — Added rewrite button on task title
 - `ui/src/components/CommentThread.tsx` — Added rewrite button on comments
 - `ui/src/components/OnboardingWizard.tsx` — Added rewrite button on task description
+
+## UI Detail Changes (not in original plan, added during development)
+
+### `ui/src/pages/IssueDetail.tsx`
+- Changed attachment section from large bordered boxes with image previews to compact inline chips
+- Added `X` to lucide-react imports
+- New attachment UI: `flex flex-wrap gap-1.5` row of chips, each with tiny image thumbnail or paperclip icon, truncated filename, size, hover-delete button
+- Before: each attachment was a bordered `div` with `max-h-56` image preview
+
+### `ui/src/components/IssueDocumentsSection.tsx`
+- Added `ChevronsDownUp` and `ChevronsUpDown` to lucide imports
+- Added useEffect to default-collapse all documents on first visit (checks localStorage for null → folds all)
+- Added Collapse All / Expand All toggle button next to "Documents" heading

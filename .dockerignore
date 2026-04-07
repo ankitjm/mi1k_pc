@@ -8,3 +8,9 @@ coverage
 data
 tmp
 *.log
+# Local instance data — never bake into Docker image
+paperclip-data/
+logs/
+uploads/
+report/
+deploy/.env

@@ -1,0 +1,58 @@
+###############################################################################
+# MI1K Isolated Test Stack
+#
+# Builds from local source and starts a clean instance against a fresh DB.
+# Use this to verify a fresh deployment works before pushing or releasing.
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up --build
+#   # Wait for "MI1K is healthy" in logs, then open http://localhost:3101
+#   # Ctrl+C to stop, then:
+#   docker compose -f docker-compose.test.yml down -v   # destroys all test data
+###############################################################################
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: mi1k-test-db
+    environment:
+      POSTGRES_USER: mi1k
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: mi1k
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mi1k -d mi1k"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    # No persistent volume — each test run starts with an empty DB
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mi1k-test-app
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3101:3100"
+    environment:
+      DATABASE_URL: postgres://mi1k:testpassword@db:5432/mi1k
+      BETTER_AUTH_SECRET: test-secret-not-for-production-use
+      PAPERCLIP_PUBLIC_URL: http://localhost:3101
+      PORT: "3100"
+      SERVE_UI: "true"
+      # local_trusted = no login required, easy to verify onboarding wizard loads
+      PAPERCLIP_DEPLOYMENT_MODE: local_trusted
+      PAPERCLIP_HOME: /paperclip
+      PAPERCLIP_MIGRATION_AUTO_APPLY: "true"
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3100/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
