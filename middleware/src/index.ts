@@ -14,24 +14,16 @@ import { closePool } from './db.ts'
 import { runRotation } from './session-rotator.ts'
 import { seedFromMemoryFiles } from './wiki/seeder.ts'
 import { runInjection } from './context-injector.ts'
-import { readAll } from './wiki/store.ts'
-
-let seeded = false
 
 async function tick() {
   const now = new Date().toISOString().slice(0, 19)
   console.log(`\n[daemon] tick at ${now}`)
 
-  // One-time seed on first run
-  if (!seeded) {
-    const existing = readAll()
-    if (existing.length === 0) {
-      console.log('[daemon] wiki is empty — running initial seed')
-      await seedFromMemoryFiles()
-    } else {
-      console.log(`[daemon] wiki has ${existing.length} entries — skipping seed`)
-    }
-    seeded = true
+  // Incremental seed every tick — skips already-imported files, picks up new agents
+  try {
+    await seedFromMemoryFiles()
+  } catch (err) {
+    console.error('[daemon] seed error:', (err as Error).message)
   }
 
   // Session rotation

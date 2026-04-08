@@ -24,48 +24,85 @@ interface AgentTask {
 }
 
 export async function getAgentsWithTasks(): Promise<AgentTask[]> {
-  const rows = await query<{
+  // First: get all agents that have an instruction root
+  const agentRows = await query<{
     agent_id: string
     agent_name: string
     instructions_root: string | null
-    identifier: string
-    title: string
-    status: string
   }>(`
-    SELECT
-      a.id            AS agent_id,
-      a.name          AS agent_name,
-      (a.adapter_config->>'instructionsRootPath') AS instructions_root,
-      i.identifier,
-      i.title,
-      i.status
-    FROM issues i
-    JOIN agents a ON a.id = i.assignee_agent_id
-    WHERE i.company_id = $1
-      AND i.status IN ('todo', 'in_progress', 'blocked')
-      AND i.assignee_agent_id IS NOT NULL
-    ORDER BY a.name, i.status DESC
+    SELECT id AS agent_id, name AS agent_name,
+      (adapter_config->>'instructionsRootPath') AS instructions_root
+    FROM agents
+    WHERE company_id = $1 AND adapter_config->>'instructionsRootPath' IS NOT NULL
+    ORDER BY name
   `, [config.companyId])
 
-  // Group by agent
-  const byAgent = new Map<string, AgentTask>()
-  for (const row of rows) {
-    if (!row.instructions_root) continue
+  // Second: active tasks (todo / in_progress / blocked)
+  const activeRows = await query<{
+    agent_id: string; identifier: string; title: string; status: string
+  }>(`
+    SELECT assignee_agent_id AS agent_id, identifier, title, status
+    FROM issues
+    WHERE company_id = $1
+      AND status IN ('todo', 'in_progress', 'blocked')
+      AND assignee_agent_id IS NOT NULL
+    ORDER BY status DESC, updated_at DESC
+  `, [config.companyId])
 
-    if (!byAgent.has(row.agent_id)) {
-      byAgent.set(row.agent_id, {
-        agentId: row.agent_id,
-        agentName: row.agent_name,
-        agentSlug: row.agent_name.toLowerCase().replace(/\s+/g, '-'),
-        instructionsRoot: row.instructions_root,
-        tasks: [],
-      })
-    }
-    byAgent.get(row.agent_id)!.tasks.push({
+  // Third: recent completed tasks (last 5 per agent — shows what they know)
+  const doneRows = await query<{
+    agent_id: string; identifier: string; title: string; status: string
+  }>(`
+    SELECT DISTINCT ON (assignee_agent_id, identifier)
+      assignee_agent_id AS agent_id, identifier, title, status
+    FROM issues
+    WHERE company_id = $1
+      AND status = 'done'
+      AND assignee_agent_id IS NOT NULL
+    ORDER BY assignee_agent_id, identifier DESC, updated_at DESC
+    LIMIT 100
+  `, [config.companyId])
+
+  // Group done tasks by agent, keep latest 5 per agent
+  const doneByAgent = new Map<string, typeof doneRows>()
+  for (const row of doneRows) {
+    if (!doneByAgent.has(row.agent_id)) doneByAgent.set(row.agent_id, [])
+    const list = doneByAgent.get(row.agent_id)!
+    if (list.length < 5) list.push(row)
+  }
+
+  // Build agent map
+  const byAgent = new Map<string, AgentTask>()
+  for (const a of agentRows) {
+    if (!a.instructions_root) continue
+    byAgent.set(a.agent_id, {
+      agentId: a.agent_id,
+      agentName: a.agent_name,
+      agentSlug: a.agent_name.toLowerCase().replace(/\s+/g, '-'),
+      instructionsRoot: a.instructions_root,
+      tasks: [],
+    })
+  }
+
+  // Add active tasks
+  for (const row of activeRows) {
+    byAgent.get(row.agent_id)?.tasks.push({
       identifier: row.identifier,
       title: row.title,
       status: row.status,
     })
+  }
+
+  // Add recent done tasks (only if agent has no active tasks, to keep file small)
+  for (const [agentId, doneTasks] of doneByAgent) {
+    const agent = byAgent.get(agentId)
+    if (!agent) continue
+    const hasActive = agent.tasks.some(t => t.status !== 'done')
+    if (!hasActive) {
+      for (const t of doneTasks) {
+        agent.tasks.push({ identifier: t.identifier, title: t.title, status: t.status })
+      }
+    }
   }
 
   return Array.from(byAgent.values())
@@ -131,13 +168,26 @@ function buildContextFile(
   lines.push(`# Current Context for ${agent.agentName}`)
   lines.push('')
 
-  // Active tasks
-  lines.push('## Your Active Tasks')
-  for (const task of agent.tasks) {
-    const badge = task.status === 'in_progress' ? '🔵' : task.status === 'blocked' ? '🔴' : '⚪'
-    lines.push(`- ${badge} **${task.identifier}**: ${task.title} *(${task.status})*`)
+  // Tasks section
+  const activeTasks = agent.tasks.filter(t => t.status !== 'done')
+  const doneTasks = agent.tasks.filter(t => t.status === 'done')
+
+  if (activeTasks.length > 0) {
+    lines.push('## Your Active Tasks')
+    for (const task of activeTasks) {
+      const badge = task.status === 'in_progress' ? '🔵' : task.status === 'blocked' ? '🔴' : '⚪'
+      lines.push(`- ${badge} **${task.identifier}**: ${task.title} *(${task.status})*`)
+    }
+    lines.push('')
   }
-  lines.push('')
+
+  if (doneTasks.length > 0) {
+    lines.push('## Recent Completed Work')
+    for (const task of doneTasks) {
+      lines.push(`- ✅ **${task.identifier}**: ${task.title}`)
+    }
+    lines.push('')
+  }
 
   // Wiki knowledge relevant to current work
   if (wikiEntries.length > 0) {
