@@ -335,20 +335,22 @@ export function Documents() {
     enabled: !!selectedCompanyId,
   });
 
-  const { data: assets, isLoading: assetsLoading, error: assetsError } = useQuery({
+  const { data: assets } = useQuery({
     queryKey: queryKeys.assets.list(selectedCompanyId!),
     queryFn: () => assetsApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    retry: false,
   });
 
-  const { data: wsFiles, isLoading: wsLoading, error: wsError } = useQuery({
+  const { data: wsFiles } = useQuery({
     queryKey: queryKeys.assets.workspaceFiles(selectedCompanyId!),
     queryFn: () => assetsApi.listWorkspaceFiles(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    retry: false,
   });
 
-  const isLoading = docsLoading || assetsLoading || wsLoading;
-  const error = docsError || assetsError || wsError;
+  const isLoading = docsLoading;
+  const error = docsError;
 
   // Build unified list sorted by date, newest first
   const unified = useMemo<UnifiedItem[]>(() => {

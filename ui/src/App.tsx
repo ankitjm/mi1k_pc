@@ -31,6 +31,8 @@ import { CompanyImport } from "./pages/CompanyImport";
 import { DesignGuide } from "./pages/DesignGuide";
 import { Documents } from "./pages/Documents";
 import { Workflows } from "./pages/Workflows";
+import { BrandBrain } from "./pages/BrandBrain";
+import { MilkDocs } from "./pages/MilkDocs";
 import { InstanceAdapters } from "./pages/InstanceAdapters";
 import { InstanceGeneralSettings } from "./pages/InstanceGeneralSettings";
 import { InstanceSettings } from "./pages/InstanceSettings";
@@ -164,6 +166,8 @@ function boardRoutes() {
       <Route path="execution-workspaces/:workspaceId" element={<ExecutionWorkspaceDetail />} />
       <Route path="documents" element={<Documents />} />
       <Route path="workflows" element={<Workflows />} />
+      <Route path="brand-brain" element={<BrandBrain />} />
+      <Route path="wiki" element={<Navigate to="/brand-brain" replace />} />
       <Route path="goals" element={<Goals />} />
       <Route path="goals/:goalId" element={<GoalDetail />} />
       <Route path="approvals" element={<Navigate to="/approvals/pending" replace />} />
@@ -318,6 +322,9 @@ export function App() {
         <Route element={<CloudAccessGate />}>
           <Route index element={<CompanyRootRedirect />} />
           <Route path="onboarding" element={<OnboardingRoutePage />} />
+          <Route path="docs" element={<Layout />}>
+            <Route index element={<MilkDocs />} />
+          </Route>
           <Route path="instance" element={<Navigate to="/instance/settings/general" replace />} />
           <Route path="instance/settings" element={<Layout />}>
             <Route index element={<Navigate to="general" replace />} />
@@ -333,6 +340,8 @@ export function App() {
           <Route path="issues/:issueId" element={<UnprefixedBoardRedirect />} />
           <Route path="documents" element={<UnprefixedBoardRedirect />} />
           <Route path="workflows" element={<UnprefixedBoardRedirect />} />
+          <Route path="brand-brain" element={<UnprefixedBoardRedirect />} />
+          <Route path="wiki" element={<Navigate to="/brand-brain" replace />} />
           <Route path="routines" element={<UnprefixedBoardRedirect />} />
           <Route path="routines/:routineId" element={<UnprefixedBoardRedirect />} />
           <Route path="skills/*" element={<UnprefixedBoardRedirect />} />

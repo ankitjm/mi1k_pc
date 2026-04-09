@@ -13,6 +13,7 @@ import {
   Settings,
   FileText,
   Zap,
+  Brain,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarSection } from "./SidebarSection";
@@ -105,6 +106,7 @@ export function Sidebar() {
           <SidebarNavItem to="/goals" label="Goals" icon={Target} />
           <SidebarNavItem to="/documents" label="Documents" icon={FileText} />
           <SidebarNavItem to="/workflows" label="Workflows" icon={Zap} />
+          <SidebarNavItem to="/brand-brain" label="Brand Brain" icon={Brain} />
         </SidebarSection>
 
         <SidebarProjects />

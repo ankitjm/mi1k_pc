@@ -17,3 +17,4 @@ export { accessRoutes } from "./access.js";
 export { instanceSettingsRoutes } from "./instance-settings.js";
 export { knowledgeBaseRoutes } from "./knowledge-base.js";
 export { aiRewriteRoutes } from "./ai-rewrite.js";
+export { wikiRoutes } from "./wiki.js";

@@ -14,6 +14,8 @@ import { companyRoutes } from "./routes/companies.js";
 import { companySkillRoutes } from "./routes/company-skills.js";
 import { knowledgeBaseRoutes } from "./routes/knowledge-base.js";
 import { aiRewriteRoutes } from "./routes/ai-rewrite.js";
+import { wikiRoutes } from "./routes/wiki.js";
+import { documentRoutes } from "./routes/documents.js";
 import { agentRoutes } from "./routes/agents.js";
 import { projectRoutes } from "./routes/projects.js";
 import { issueRoutes } from "./routes/issues.js";
@@ -147,6 +149,8 @@ export async function createApp(
   api.use(companySkillRoutes(db));
   api.use("/companies", knowledgeBaseRoutes(db));
   api.use("/companies", aiRewriteRoutes(db));
+  api.use(wikiRoutes());
+  api.use(documentRoutes(db));
   api.use(dashboardRoutes(db));
   api.use(sidebarBadgeRoutes(db));
   api.use(agentRoutes(db));

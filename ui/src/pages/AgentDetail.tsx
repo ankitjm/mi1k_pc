@@ -96,6 +96,7 @@ import {
   arraysEqual,
   isReadOnlyUnmanagedSkillEntry,
 } from "../lib/agent-skills-state";
+import { AvatarCropDialog } from "../components/AvatarCropDialog";
 
 const runStatusIcons: Record<string, { icon: typeof CheckCircle2; color: string }> = {
   succeeded: { icon: CheckCircle2, color: "text-green-600 dark:text-green-400" },
@@ -724,6 +725,7 @@ export function AgentDetail() {
   });
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [cropImage, setCropImage] = useState<string | null>(null);
 
   const uploadAvatar = useMutation({
     mutationFn: (file: File) => agentsApi.uploadAvatar(agentLookupRef, file, resolvedCompanyId ?? undefined),
@@ -830,7 +832,7 @@ export function AgentDetail() {
   return (
     <div className={cn("space-y-6", isMobile && showConfigActionBar && "pb-24")}>
       {/* Header */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-4 md:p-5">
         <div className="flex items-center gap-3 min-w-0">
           <input
             ref={avatarInputRef}
@@ -839,14 +841,18 @@ export function AgentDetail() {
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) uploadAvatar.mutate(file);
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = () => setCropImage(reader.result as string);
+                reader.readAsDataURL(file);
+              }
               e.target.value = "";
             }}
           />
           {agent.avatarUrl ? (
             <Popover>
               <PopoverTrigger asChild>
-                <button className="shrink-0 h-12 w-12 rounded-lg overflow-hidden hover:opacity-80 transition-opacity">
+                <button className="shrink-0 h-12 w-12 rounded-full overflow-hidden hover:opacity-80 transition-opacity">
                   <img src={agent.avatarUrl} alt={agent.name} className="h-full w-full object-cover" />
                 </button>
               </PopoverTrigger>
@@ -869,7 +875,7 @@ export function AgentDetail() {
                 </Button>
               }
             >
-              <button className="shrink-0 flex items-center justify-center h-12 w-12 rounded-lg bg-accent hover:bg-accent/80 transition-colors">
+              <button className="shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-accent hover:bg-accent/80 transition-colors">
                 <AgentIcon icon={agent.icon} className="h-6 w-6" />
               </button>
             </AgentIconPicker>
@@ -1106,6 +1112,16 @@ export function AgentDetail() {
           />
         </div>
       ) : null}
+      <AvatarCropDialog
+        imageSrc={cropImage}
+        open={!!cropImage}
+        onClose={() => setCropImage(null)}
+        onCropComplete={(blob) => {
+          const file = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+          uploadAvatar.mutate(file);
+          setCropImage(null);
+        }}
+      />
     </div>
   );
 }
