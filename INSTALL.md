@@ -74,85 +74,105 @@ Then stop the server with Ctrl+C.
 
 cd middleware && npm install && cd ..
 
-### 8. Create the startup script
+### 8. Install as background services (launchd)
 
-Create a file at ~/Desktop/mi1k.command with this content:
+This runs Mi1k invisibly in the background — no terminal window needed. It auto-starts on login and auto-restarts on crash.
 
-#!/bin/bash
-set -e
-APP_DIR="$HOME/Documents/mi1k"
-NODE="$(which node)"
-cd "$APP_DIR"
+First, find your Node path (needed for the plists):
+NODE_PATH="$(which node)"
+echo "$NODE_PATH"
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Starting Mi1k"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+Create the server service plist at ~/Library/LaunchAgents/tech.khosha.mi1k.plist:
 
-cleanup() {
-  echo ""
-  echo "Shutting down..."
-  [ -n "$SERVER_PID" ]     && kill "$SERVER_PID"     2>/dev/null || true
-  [ -n "$MIDDLEWARE_PID" ] && kill "$MIDDLEWARE_PID" 2>/dev/null || true
-  echo "All stopped."
-}
-trap cleanup EXIT INT TERM
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>tech.khosha.mi1k</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>cd $HOME/Documents/mi1k && PAPERCLIP_HOME=$HOME/Documents/mi1k/paperclip-data PAPERCLIP_INSTANCE_ID=default PAPERCLIP_MIGRATION_AUTO_APPLY=true MI1K_HUB_URL=http://187.77.12.140:3200 MI1K_INSTANCE_NAME=CHANGE_ME $NODE_PATH server/node_modules/tsx/dist/cli.mjs server/src/index.ts</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>$HOME/Documents/mi1k/logs/mi1k-launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>$HOME/Documents/mi1k/logs/mi1k-launchd.err</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>$NODE_PATH_DIR:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>$HOME</string>
+    </dict>
+</dict>
+</plist>
 
-if lsof -ti :3100 > /dev/null 2>&1; then
-  echo "Killing existing process on port 3100..."
-  lsof -ti :3100 | xargs kill -9
-  sleep 1
-fi
+Create the middleware service plist at ~/Library/LaunchAgents/tech.khosha.mi1k-middleware.plist:
 
-if ! pg_isready -q 2>/dev/null; then
-  echo "Starting PostgreSQL..."
-  brew services start postgresql@17
-  sleep 3
-fi
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>tech.khosha.mi1k-middleware</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>cd $HOME/Documents/mi1k/middleware && mkdir -p logs && MI1K_HUB_URL=http://187.77.12.140:3200 MI1K_INSTANCE_NAME=CHANGE_ME DATABASE_URL=postgres://paperclip:paperclip@localhost:5432/paperclip $NODE_PATH --experimental-strip-types src/index.ts</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>$HOME/Documents/mi1k/middleware/logs/daemon.log</string>
+    <key>StandardErrorPath</key>
+    <string>$HOME/Documents/mi1k/middleware/logs/daemon.err</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>$NODE_PATH_DIR:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>$HOME</string>
+    </dict>
+</dict>
+</plist>
 
-echo ""
-echo "[1/2] Starting Mi1k server..."
-export PAPERCLIP_HOME="$APP_DIR/paperclip-data"
-export PAPERCLIP_INSTANCE_ID="default"
-export PAPERCLIP_MIGRATION_AUTO_APPLY="true"
-export DATABASE_URL="postgres://paperclip:paperclip@localhost:5432/paperclip"
-export MI1K_HUB_URL="http://187.77.12.140:3200"
-export MI1K_INSTANCE_NAME="CHANGE_ME"
-"$NODE" server/node_modules/tsx/dist/cli.mjs server/src/index.ts &
-SERVER_PID=$!
+IMPORTANT: In both plists above, replace:
+- $HOME with the actual home directory (e.g. /Users/username)
+- $NODE_PATH with the actual node path from step above
+- $NODE_PATH_DIR with the directory containing node (e.g. /Users/username/.nvm/versions/node/v25.6.0/bin)
+- CHANGE_ME with the client/instance name
 
-echo "Waiting for Mi1k on http://localhost:3100 ..."
-for i in $(seq 1 40); do
-  if curl -sf http://localhost:3100/api/health > /dev/null 2>&1; then
-    echo "✓ Mi1k is ready!"
-    break
-  fi
-  sleep 3
-done
+Then set up the mi1k control command:
+mkdir -p ~/bin
+ln -sf ~/Documents/mi1k/scripts/mi1k.sh ~/bin/mi1k
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
 
-echo ""
-echo "[2/2] Starting middleware..."
-cd "$APP_DIR/middleware"
-mkdir -p logs
-"$NODE" --experimental-strip-types src/index.ts >> logs/daemon.log 2>&1 &
-MIDDLEWARE_PID=$!
-echo "✓ Middleware running (PID $MIDDLEWARE_PID)"
-cd "$APP_DIR"
+### 9. Start it
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Mi1k is running — http://localhost:3100"
-echo "  Close this window to stop everything."
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-open http://localhost:3100
+mi1k start
 
-wait $SERVER_PID
+This starts PostgreSQL (if needed), the server, and the middleware. Everything runs in the background.
 
-Make it executable:
-chmod +x ~/Desktop/mi1k.command
-
-### 9. Run it
-
-Double-click ~/Desktop/mi1k.command — Mi1k opens in browser.
+Other commands:
+- mi1k stop — stop everything
+- mi1k restart — restart everything
+- mi1k status — check if services are running
+- mi1k logs — tail all logs
+- mi1k logs server — tail server logs only
+- mi1k logs middleware — tail middleware logs only
 
 ### 10. After onboarding
 
@@ -231,19 +251,14 @@ cd middleware
 npm install
 cd ..
 
-### 8. Create the startup script
+### 8. Install as background services (Task Scheduler)
 
-Create a file at %USERPROFILE%\Desktop\mi1k.bat with this content:
+This runs Mi1k invisibly in the background — no terminal window. Auto-starts on login, auto-restarts on crash.
+
+Create the startup script at %USERPROFILE%\Documents\mi1k\scripts\mi1k-service.bat:
 
 @echo off
-title Mi1k
 set APP_DIR=%USERPROFILE%\Documents\mi1k
-cd /d %APP_DIR%
-
-echo =============================================
-echo   Starting Mi1k
-echo =============================================
-
 set PAPERCLIP_HOME=%APP_DIR%\paperclip-data
 set PAPERCLIP_INSTANCE_ID=default
 set PAPERCLIP_MIGRATION_AUTO_APPLY=true
@@ -251,35 +266,37 @@ set DATABASE_URL=postgres://paperclip:paperclip@localhost:5432/paperclip
 set MI1K_HUB_URL=http://187.77.12.140:3200
 set MI1K_INSTANCE_NAME=CHANGE_ME
 
-echo.
-echo [1/2] Starting Mi1k server...
+cd /d %APP_DIR%
 start /b node server\node_modules\tsx\dist\cli.mjs server\src\index.ts
 
-echo Waiting for server...
 :waitloop
 timeout /t 3 /nobreak >nul
 curl -sf http://localhost:3100/api/health >nul 2>&1
 if errorlevel 1 goto waitloop
-echo Server is ready!
 
-echo.
-echo [2/2] Starting middleware...
 cd middleware
 start /b node --experimental-strip-types src\index.ts
 cd /d %APP_DIR%
 
-echo.
-echo =============================================
-echo   Mi1k is running - http://localhost:3100
-echo   Close this window to stop everything.
-echo =============================================
-start http://localhost:3100
+Register it as a scheduled task that runs at login (run in admin PowerShell):
+$action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"$env:USERPROFILE\Documents\mi1k\scripts\mi1k-service.bat`"" -WorkingDirectory "$env:USERPROFILE\Documents\mi1k"
+$trigger = New-ScheduledTaskTrigger -AtLogon
+$settings = New-ScheduledTaskSettingsSet -RestartInterval (New-TimeSpan -Minutes 1) -RestartCount 999 -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 0
+Register-ScheduledTask -TaskName "Mi1k" -Action $action -Trigger $trigger -Settings $settings -Description "Mi1k Server and Middleware"
 
-pause
+IMPORTANT: Replace CHANGE_ME with the client/instance name in mi1k-service.bat.
 
-### 9. Run it
+### 9. Start it
 
-Double-click mi1k.bat on your Desktop — Mi1k opens in browser.
+Start-ScheduledTask -TaskName "Mi1k"
+
+Or just log out and back in — it starts automatically.
+
+Other commands (PowerShell):
+- Start-ScheduledTask -TaskName "Mi1k" — start
+- Stop-ScheduledTask -TaskName "Mi1k" — stop
+- Get-ScheduledTask -TaskName "Mi1k" — check status
+- Unregister-ScheduledTask -TaskName "Mi1k" — remove
 
 ### 10. After onboarding
 
