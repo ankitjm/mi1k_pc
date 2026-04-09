@@ -115,6 +115,8 @@ export PAPERCLIP_HOME="$APP_DIR/paperclip-data"
 export PAPERCLIP_INSTANCE_ID="default"
 export PAPERCLIP_MIGRATION_AUTO_APPLY="true"
 export DATABASE_URL="postgres://paperclip:paperclip@localhost:5432/paperclip"
+export MI1K_HUB_URL="http://187.77.12.140:3200"
+export MI1K_INSTANCE_NAME="CHANGE_ME"
 "$NODE" server/node_modules/tsx/dist/cli.mjs server/src/index.ts &
 SERVER_PID=$!
 
@@ -246,6 +248,8 @@ set PAPERCLIP_HOME=%APP_DIR%\paperclip-data
 set PAPERCLIP_INSTANCE_ID=default
 set PAPERCLIP_MIGRATION_AUTO_APPLY=true
 set DATABASE_URL=postgres://paperclip:paperclip@localhost:5432/paperclip
+set MI1K_HUB_URL=http://187.77.12.140:3200
+set MI1K_INSTANCE_NAME=CHANGE_ME
 
 echo.
 echo [1/2] Starting Mi1k server...

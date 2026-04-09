@@ -29,6 +29,26 @@ interface PingPayload {
   documents: number
   dailyTokens: number
   totalTokens: number
+  dailyCostCents: number
+  totalCostCents: number
+  // Task breakdown
+  tasksDone: number
+  tasksInProgress: number
+  tasksTodo: number
+  tasksBlocked: number
+  tasksBacklog: number
+  // Agent health
+  agentsActive: number
+  agentsPaused: number
+  // Runs (last 24h)
+  runsTotal: number
+  runsCompleted: number
+  runsFailed: number
+  // Routines & incidents
+  activeRoutines: number
+  openIncidents: number
+  // Last activity
+  lastActivityAt: string
   gitCommit: string
   gitBehind: number
   updateAvailable: boolean
@@ -47,7 +67,7 @@ export function getLastUpdateStatus(): UpdateStatus | null {
 }
 
 async function collectStats(): Promise<PingPayload> {
-  // Counts from DB
+  // Basic counts
   const counts = await Promise.all([
     query<{ count: string }>('SELECT COUNT(*)::text AS count FROM companies'),
     query<{ count: string }>('SELECT COUNT(*)::text AS count FROM agents'),
@@ -58,26 +78,63 @@ async function collectStats(): Promise<PingPayload> {
     query<{ count: string }>('SELECT COUNT(*)::text AS count FROM documents'),
   ])
 
-  // Daily token usage (last 24h)
-  const tokenRows = await query<{ total: string }>(`
-    SELECT COALESCE(SUM(
-      COALESCE((usage_json->>'inputTokens')::bigint, 0) +
-      COALESCE((usage_json->>'outputTokens')::bigint, 0) +
-      COALESCE((usage_json->>'cachedInputTokens')::bigint, 0)
-    ), 0)::text AS total
-    FROM heartbeat_runs
-    WHERE started_at > NOW() - INTERVAL '24 hours'
+  // Task breakdown by status
+  const taskBreakdown = await query<{ status: string; count: string }>(`
+    SELECT status, COUNT(*)::text AS count FROM issues GROUP BY status
   `)
+  const taskMap: Record<string, number> = {}
+  for (const r of taskBreakdown) taskMap[r.status] = parseInt(r.count)
 
-  // Total tokens all time
-  const totalTokenRows = await query<{ total: string }>(`
-    SELECT COALESCE(SUM(
-      COALESCE((usage_json->>'inputTokens')::bigint, 0) +
-      COALESCE((usage_json->>'outputTokens')::bigint, 0) +
-      COALESCE((usage_json->>'cachedInputTokens')::bigint, 0)
-    ), 0)::text AS total
-    FROM heartbeat_runs
+  // Agent health
+  const agentHealth = await Promise.all([
+    query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM agents WHERE last_heartbeat_at > NOW() - INTERVAL '1 hour'`),
+    query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM agents WHERE paused_at IS NOT NULL`),
+  ])
+
+  // Runs in last 24h
+  const runStats = await query<{ status: string; count: string }>(`
+    SELECT status, COUNT(*)::text AS count FROM heartbeat_runs
+    WHERE started_at > NOW() - INTERVAL '24 hours'
+    GROUP BY status
   `)
+  const runMap: Record<string, number> = {}
+  for (const r of runStats) runMap[r.status] = parseInt(r.count)
+  const runsTotal = Object.values(runMap).reduce((a, b) => a + b, 0)
+
+  // Token usage
+  const [tokenRows, totalTokenRows] = await Promise.all([
+    query<{ total: string }>(`
+      SELECT COALESCE(SUM(
+        COALESCE((usage_json->>'inputTokens')::bigint, 0) +
+        COALESCE((usage_json->>'outputTokens')::bigint, 0) +
+        COALESCE((usage_json->>'cachedInputTokens')::bigint, 0)
+      ), 0)::text AS total
+      FROM heartbeat_runs WHERE started_at > NOW() - INTERVAL '24 hours'
+    `),
+    query<{ total: string }>(`
+      SELECT COALESCE(SUM(
+        COALESCE((usage_json->>'inputTokens')::bigint, 0) +
+        COALESCE((usage_json->>'outputTokens')::bigint, 0) +
+        COALESCE((usage_json->>'cachedInputTokens')::bigint, 0)
+      ), 0)::text AS total
+      FROM heartbeat_runs
+    `),
+  ])
+
+  // Cost data
+  const [dailyCost, totalCost] = await Promise.all([
+    query<{ total: string }>(`SELECT COALESCE(SUM(cost_cents), 0)::text AS total FROM cost_events WHERE occurred_at > NOW() - INTERVAL '24 hours'`),
+    query<{ total: string }>(`SELECT COALESCE(SUM(cost_cents), 0)::text AS total FROM cost_events`),
+  ])
+
+  // Active routines & open budget incidents
+  const [activeRoutines, openIncidents] = await Promise.all([
+    query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM routines WHERE status = 'active'`),
+    query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM budget_incidents WHERE status = 'open'`),
+  ])
+
+  // Last activity timestamp
+  const lastActivity = await query<{ ts: string | null }>(`SELECT MAX(created_at)::text AS ts FROM activity_log`)
 
   // Git update check (once per hour max)
   const now = Date.now()
@@ -85,7 +142,6 @@ async function collectStats(): Promise<PingPayload> {
     try {
       cachedUpdateStatus = await checkForUpdates()
       lastUpdateCheck = now
-      // Write to file so the server can read it via /api/system/update-status
       const statusFile = path.join(config.paperclipDataRoot, 'update-status.json')
       fs.writeFileSync(statusFile, JSON.stringify(cachedUpdateStatus), 'utf8')
     } catch {
@@ -112,6 +168,21 @@ async function collectStats(): Promise<PingPayload> {
     documents: parseInt(counts[6]?.[0]?.count ?? '0'),
     dailyTokens: parseInt(tokenRows[0]?.total ?? '0'),
     totalTokens: parseInt(totalTokenRows[0]?.total ?? '0'),
+    dailyCostCents: parseInt(dailyCost[0]?.total ?? '0'),
+    totalCostCents: parseInt(totalCost[0]?.total ?? '0'),
+    tasksDone: (taskMap['done'] ?? 0) + (taskMap['cancelled'] ?? 0),
+    tasksInProgress: (taskMap['in_progress'] ?? 0) + (taskMap['in_review'] ?? 0),
+    tasksTodo: taskMap['todo'] ?? 0,
+    tasksBlocked: taskMap['blocked'] ?? 0,
+    tasksBacklog: taskMap['backlog'] ?? 0,
+    agentsActive: parseInt(agentHealth[0]?.[0]?.count ?? '0'),
+    agentsPaused: parseInt(agentHealth[1]?.[0]?.count ?? '0'),
+    runsTotal,
+    runsCompleted: runMap['completed'] ?? 0,
+    runsFailed: runMap['failed'] ?? 0,
+    activeRoutines: parseInt(activeRoutines[0]?.count ?? '0'),
+    openIncidents: parseInt(openIncidents[0]?.count ?? '0'),
+    lastActivityAt: lastActivity[0]?.ts ?? '',
     gitCommit: cachedUpdateStatus?.localCommit ?? '',
     gitBehind: cachedUpdateStatus?.behindBy ?? 0,
     updateAvailable: cachedUpdateStatus?.updateAvailable ?? false,
