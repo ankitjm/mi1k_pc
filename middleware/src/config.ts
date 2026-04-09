@@ -32,6 +32,18 @@ export const config = {
 
   // Max tokens for a generated CONTEXT.md (keep small — this loads on every run)
   maxContextTokens: 600,
+
+  // ── Hub / Tracking ────────────────────────────────────────────────────────
+  // Central hub URL for reporting stats. Set MI1K_HUB_URL="" to disable.
+  hubUrl: process.env.MI1K_HUB_URL ?? 'http://187.77.12.140:3200',
+
+  // Instance identity (shown in hub dashboard)
+  instanceId: process.env.MI1K_INSTANCE_ID
+    ?? process.env.PAPERCLIP_INSTANCE_ID ?? 'default',
+  instanceName: process.env.MI1K_INSTANCE_NAME ?? '',
+
+  // How often to send stats to hub (ms). Default: 1 hour
+  reportIntervalMs: parseInt(process.env.MI1K_REPORT_INTERVAL_MS ?? '3600000'),
 }
 
 export type Config = typeof config

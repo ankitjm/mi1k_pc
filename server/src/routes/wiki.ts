@@ -177,5 +177,19 @@ export function wikiRoutes() {
     res.json({ deleted: filePath });
   });
 
+  // ── system update status ──────────────────────────────────────────────────
+  router.get("/system/update-status", (_req, res) => {
+    // Read the cached update status written by the middleware reporter
+    const statusFile = path.join(getDataRoot(), "update-status.json");
+    if (fs.existsSync(statusFile)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(statusFile, "utf8"));
+        res.json(data);
+        return;
+      } catch { /* fall through */ }
+    }
+    res.json({ updateAvailable: false, lastChecked: null });
+  });
+
   return router;
 }

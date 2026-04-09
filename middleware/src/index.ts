@@ -14,6 +14,7 @@ import { closePool } from './db.ts'
 import { runRotation } from './session-rotator.ts'
 import { seedFromMemoryFiles } from './wiki/seeder.ts'
 import { runInjection } from './context-injector.ts'
+import { runReport } from './reporter.ts'
 
 async function tick() {
   const now = new Date().toISOString().slice(0, 19)
@@ -39,6 +40,13 @@ async function tick() {
   } catch (err) {
     console.error('[daemon] injection error:', (err as Error).message)
   }
+
+  // Report stats to hub (rate-limited internally)
+  try {
+    await runReport()
+  } catch (err) {
+    console.error('[daemon] report error:', (err as Error).message)
+  }
 }
 
 async function main() {
@@ -48,6 +56,7 @@ async function main() {
   console.log(`  Rotation threshold: ${(config.sessionRotationThreshold / 1000).toFixed(0)}K cached tokens`)
   console.log(`  Wiki dir:           ${config.wikiDir}`)
   console.log(`  LLM extraction:     ${config.anthropicApiKey ? 'enabled (Haiku)' : 'disabled (no API key)'}`)
+  console.log(`  Hub reporting:      ${config.hubUrl || 'disabled'}`)
   console.log('━'.repeat(50))
 
   // Run immediately, then on interval
