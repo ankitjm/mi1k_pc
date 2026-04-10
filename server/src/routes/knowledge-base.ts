@@ -6,6 +6,8 @@
  */
 import { Router } from "express";
 import multer from "multer";
+import fs from "fs";
+import path from "path";
 import type { Db } from "@paperclipai/db";
 import { buildKnowledgeBase, extractFileContent, fetchUrlContent } from "../services/knowledge-base.js";
 import { assertCompanyAccess } from "./authz.js";
@@ -99,6 +101,38 @@ export function knowledgeBaseRoutes(db: Db) {
         })),
         links: linkList,
       });
+
+      // Persist each uploaded file to context/ so Brand Brain can display them
+      const dataRoot = process.env.PAPERCLIP_HOME || path.resolve(process.cwd(), "paperclip-data");
+      const contextDir = path.join(dataRoot, "context");
+      fs.mkdirSync(contextDir, { recursive: true });
+
+      for (const file of files) {
+        try {
+          const extracted = await extractFileContent({
+            originalname: file.originalname,
+            buffer: file.buffer,
+            mimetype: file.mimetype,
+          });
+          const baseName = file.originalname
+            .replace(/\.[^.]+$/, "")
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .toLowerCase()
+            .slice(0, 60);
+          const outPath = path.join(contextDir, `${baseName}.md`);
+          const title = file.originalname.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
+          fs.writeFileSync(outPath, `# ${title}\n\n${extracted.text}`, "utf8");
+        } catch { /* already captured in result.errors */ }
+      }
+
+      // Also persist the combined context markdown
+      if (result.contextMarkdown) {
+        fs.writeFileSync(
+          path.join(contextDir, "00_company_context.md"),
+          result.contextMarkdown,
+          "utf8",
+        );
+      }
 
       res.json({
         contextMarkdown: result.contextMarkdown,

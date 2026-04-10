@@ -78,86 +78,12 @@ cd middleware && npm install && cd ..
 
 This runs Mi1k invisibly in the background — no terminal window needed. It auto-starts on login and auto-restarts on crash.
 
-First, find your Node path (needed for the plists):
-NODE_PATH="$(which node)"
-echo "$NODE_PATH"
+Run the setup script with the instance name:
+./scripts/setup-services.sh "ClientName"
 
-Create the server service plist at ~/Library/LaunchAgents/tech.khosha.mi1k.plist:
+This auto-detects Node path, generates the launchd plists, and installs the mi1k control command.
 
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>tech.khosha.mi1k</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/bash</string>
-        <string>-c</string>
-        <string>cd $HOME/Documents/mi1k && PAPERCLIP_HOME=$HOME/Documents/mi1k/paperclip-data PAPERCLIP_INSTANCE_ID=default PAPERCLIP_MIGRATION_AUTO_APPLY=true MI1K_HUB_URL=http://187.77.12.140:3200 MI1K_INSTANCE_NAME=CHANGE_ME $NODE_PATH server/node_modules/tsx/dist/cli.mjs server/src/index.ts</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>$HOME/Documents/mi1k/logs/mi1k-launchd.log</string>
-    <key>StandardErrorPath</key>
-    <string>$HOME/Documents/mi1k/logs/mi1k-launchd.err</string>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>$NODE_PATH_DIR:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
-        <key>HOME</key>
-        <string>$HOME</string>
-    </dict>
-</dict>
-</plist>
-
-Create the middleware service plist at ~/Library/LaunchAgents/tech.khosha.mi1k-middleware.plist:
-
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>tech.khosha.mi1k-middleware</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/bash</string>
-        <string>-c</string>
-        <string>cd $HOME/Documents/mi1k/middleware && mkdir -p logs && MI1K_HUB_URL=http://187.77.12.140:3200 MI1K_INSTANCE_NAME=CHANGE_ME DATABASE_URL=postgres://paperclip:paperclip@localhost:5432/paperclip $NODE_PATH --experimental-strip-types src/index.ts</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>ThrottleInterval</key>
-    <integer>30</integer>
-    <key>StandardOutPath</key>
-    <string>$HOME/Documents/mi1k/middleware/logs/daemon.log</string>
-    <key>StandardErrorPath</key>
-    <string>$HOME/Documents/mi1k/middleware/logs/daemon.err</string>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>$NODE_PATH_DIR:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
-        <key>HOME</key>
-        <string>$HOME</string>
-    </dict>
-</dict>
-</plist>
-
-IMPORTANT: In both plists above, replace:
-- $HOME with the actual home directory (e.g. /Users/username)
-- $NODE_PATH with the actual node path from step above
-- $NODE_PATH_DIR with the directory containing node (e.g. /Users/username/.nvm/versions/node/v25.6.0/bin)
-- CHANGE_ME with the client/instance name
-
-Then set up the mi1k control command:
-mkdir -p ~/bin
-ln -sf ~/Documents/mi1k/scripts/mi1k.sh ~/bin/mi1k
-echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
+Then activate:
 source ~/.zshrc
 
 ### 9. Start it
@@ -312,6 +238,6 @@ The middleware auto-seeds agent context every 60 seconds.
 - **Port**: Server runs on 3100 by default.
 - **PAPERCLIP_HOME**: Points to `paperclip-data/` inside the repo. This is where all runtime data lives (agent configs, wiki, context files). It's gitignored.
 - **Middleware**: Runs three jobs on a 60-second loop: session rotation (clears bloated sessions), wiki seeding (imports agent memory), context injection (writes CONTEXT.md per agent).
-- **Brand Brain**: After onboarding, go to `/brand-brain` to upload additional brand materials (PDF, DOCX, XLSX, CSV, TXT, MD). Files get extracted and added to `paperclip-data/context/`.
+- **Brand Brain**: Documents uploaded during onboarding are automatically saved to Brand Brain. After onboarding, go to `/brand-brain` to upload additional brand materials (PDF, DOCX, XLSX, CSV, TXT, MD). Files get extracted and added to `paperclip-data/context/`.
 - **SSH tunnel** (optional): To expose remotely, add to startup script: `ssh -N -R 3100:localhost:3100 root@YOUR_SERVER_IP &`
 - **Claude API**: Agents require a Claude subscription or API key configured during onboarding.
