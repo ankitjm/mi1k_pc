@@ -28,9 +28,23 @@ import { useInboxBadge } from "../hooks/useInboxBadge";
 import { Button } from "@/components/ui/button";
 import { PluginSlotOutlet } from "@/plugins/slots";
 
+function useServerVersion() {
+  const { data } = useQuery({
+    queryKey: ["server-version"],
+    queryFn: async () => {
+      const res = await fetch("/api/health");
+      const json = await res.json();
+      return json.version as string;
+    },
+    staleTime: 300_000,
+  });
+  return data ?? "";
+}
+
 export function Sidebar() {
   const { openNewIssue } = useDialog();
   const { selectedCompanyId, selectedCompany } = useCompany();
+  const version = useServerVersion();
   const inboxBadge = useInboxBadge(selectedCompanyId);
   const { data: liveRuns } = useQuery({
     queryKey: queryKeys.liveRuns(selectedCompanyId!),
@@ -128,6 +142,12 @@ export function Sidebar() {
           itemClassName="rounded-lg border border-border p-3"
           missingBehavior="placeholder"
         />
+
+        {version && (
+          <div className="mt-auto pt-4 px-2 pb-2">
+            <p className="text-[10px] text-muted-foreground/50 text-center">Mi1k v{version}</p>
+          </div>
+        )}
       </nav>
     </aside>
   );
