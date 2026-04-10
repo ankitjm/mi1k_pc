@@ -1,0 +1,42 @@
+[
+  {
+    "uuid": "conv-001",
+    "name": "Building a Knowledge Graph",
+    "created_at": "2024-04-01T10:00:00.000000+00:00",
+    "updated_at": "2024-04-01T11:00:00.000000+00:00",
+    "chat_messages": [
+      {
+        "uuid": "msg-001",
+        "sender": "human",
+        "text": "How can I build a personal knowledge graph from my chat history?",
+        "created_at": "2024-04-01T10:00:00.000000+00:00"
+      },
+      {
+        "uuid": "msg-002",
+        "sender": "assistant",
+        "text": "You can parse chat exports into structured Markdown with YAML frontmatter, then use Obsidian's graph view to visualize connections. Tag conversations by topic and use wikilinks to create cross-references between related conversations.",
+        "created_at": "2024-04-01T10:01:00.000000+00:00"
+      }
+    ]
+  },
+  {
+    "uuid": "conv-002",
+    "name": "Obsidian Vault Setup",
+    "created_at": "2024-04-02T09:00:00.000000+00:00",
+    "updated_at": "2024-04-02T10:00:00.000000+00:00",
+    "chat_messages": [
+      {
+        "uuid": "msg-003",
+        "sender": "human",
+        "text": "What's the best way to organize an Obsidian vault for AI chat logs?",
+        "created_at": "2024-04-02T09:00:00.000000+00:00"
+      },
+      {
+        "uuid": "msg-004",
+        "sender": "assistant",
+        "text": "Organize by source (chatgpt/, claude/, gemini/ folders), use consistent frontmatter with tags, dates, and message counts. Enable the graph view with color groups per source for visual differentiation.",
+        "created_at": "2024-04-02T09:01:00.000000+00:00"
+      }
+    ]
+  }
+]

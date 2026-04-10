@@ -1,0 +1,55 @@
+{
+  "$meta": {
+    "version": 1,
+    "updatedAt": "2026-04-02T09:00:00.000Z",
+    "source": "onboard"
+  },
+  "database": {
+    "mode": "postgres",
+    "connectionString": "postgres://paperclip:paperclip@localhost:5432/paperclip",
+    "backup": {
+      "enabled": true,
+      "intervalMinutes": 60,
+      "retentionDays": 30,
+      "dir": "/Users/ankitmehta/Documents/mi1k/paperclip-data/instances/default/data/backups"
+    }
+  },
+  "logging": {
+    "mode": "file",
+    "logDir": "/Users/ankitmehta/Documents/mi1k/paperclip-data/instances/default/logs"
+  },
+  "server": {
+    "deploymentMode": "local_trusted",
+    "exposure": "private",
+    "host": "127.0.0.1",
+    "port": 3100,
+    "allowedHostnames": [
+      "localhost"
+    ],
+    "serveUi": true
+  },
+  "auth": {
+    "baseUrlMode": "explicit",
+    "disableSignUp": false,
+    "publicBaseUrl": "https://degressively-endermic-carie.ngrok-free.dev"
+  },
+  "storage": {
+    "provider": "local_disk",
+    "localDisk": {
+      "baseDir": "/Users/ankitmehta/Documents/mi1k/paperclip-data/instances/default/data/storage"
+    },
+    "s3": {
+      "bucket": "paperclip",
+      "region": "us-east-1",
+      "prefix": "",
+      "forcePathStyle": false
+    }
+  },
+  "secrets": {
+    "provider": "local_encrypted",
+    "strictMode": false,
+    "localEncrypted": {
+      "keyFilePath": "/Users/ankitmehta/Documents/mi1k/paperclip-data/instances/default/secrets/master.key"
+    }
+  }
+}

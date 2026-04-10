@@ -132,14 +132,14 @@ export async function fetchUrlContent(url: string): Promise<ExtractedContent> {
 
       // Extract brand colors from CSS
       const colors: string[] = [];
-      $("*[style]").each((_, el) => {
-        const style = $(el).attr("style") ?? "";
+      $("*[style]").each((_: unknown, el: unknown) => {
+        const style = $(el as Parameters<typeof $>[0]).attr("style") ?? "";
         const colorMatches = style.match(/#[0-9a-fA-F]{3,6}/g);
         if (colorMatches) colors.push(...colorMatches);
       });
       // Also check inline/embedded CSS
-      $("style").each((_, el) => {
-        const css = $(el).text();
+      $("style").each((_: unknown, el: unknown) => {
+        const css = $(el as Parameters<typeof $>[0]).text();
         const colorMatches = css.match(/#[0-9a-fA-F]{3,6}/g);
         if (colorMatches) colors.push(...colorMatches);
       });

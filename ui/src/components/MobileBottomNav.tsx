@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import { useDialog } from "../context/DialogContext";
+import { SIDEBAR_SCROLL_RESET_STATE } from "../lib/navigation-scroll";
 import { cn } from "../lib/utils";
 import { useInboxBadge } from "../hooks/useInboxBadge";
 
@@ -42,7 +43,7 @@ export function MobileBottomNav({ visible }: MobileBottomNavProps) {
   const items = useMemo<MobileNavItem[]>(
     () => [
       { type: "link", to: "/dashboard", label: "Home", icon: House },
-      { type: "link", to: "/issues", label: "Tasks", icon: CircleDot },
+      { type: "link", to: "/issues", label: "Issues", icon: CircleDot },
       { type: "action", label: "Create", icon: SquarePen, onClick: () => openNewIssue() },
       { type: "link", to: "/agents/all", label: "Agents", icon: Users },
       {
@@ -77,13 +78,12 @@ export function MobileBottomNav({ visible }: MobileBottomNavProps) {
                 className={cn(
                   "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-md text-[10px] font-medium transition-colors",
                   active
-                    ? "text-brand-red"
+                    ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <Icon className="h-[18px] w-[18px]" />
                 <span className="truncate">{item.label}</span>
-                {active && <span className="absolute bottom-1 h-0.5 w-4 rounded-full bg-brand-red" />}
               </button>
             );
           }
@@ -93,11 +93,12 @@ export function MobileBottomNav({ visible }: MobileBottomNavProps) {
             <NavLink
               key={item.label}
               to={item.to}
+              state={SIDEBAR_SCROLL_RESET_STATE}
               className={({ isActive }) =>
                 cn(
                   "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-md text-[10px] font-medium transition-colors",
                   isActive
-                    ? "text-brand-red"
+                    ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )
               }
@@ -107,13 +108,12 @@ export function MobileBottomNav({ visible }: MobileBottomNavProps) {
                   <span className="relative">
                     <Icon className={cn("h-[18px] w-[18px]", isActive && "stroke-[2.3]")} />
                     {item.badge != null && item.badge > 0 && (
-                      <span className="absolute -right-2 -top-2 rounded-full bg-brand-red px-1.5 py-0.5 text-[10px] leading-none text-white">
+                      <span className="absolute -right-2 -top-2 rounded-full bg-primary px-1.5 py-0.5 text-[10px] leading-none text-primary-foreground">
                         {item.badge > 99 ? "99+" : item.badge}
                       </span>
                     )}
                   </span>
                   <span className="truncate">{item.label}</span>
-                  {isActive && <span className="absolute bottom-1 h-0.5 w-4 rounded-full bg-brand-red" />}
                 </>
               )}
             </NavLink>

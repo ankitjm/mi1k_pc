@@ -8,6 +8,7 @@ import type {
   AgentKeyCreated,
   AgentRuntimeState,
   AgentTaskSession,
+  AgentWakeupResponse,
   HeartbeatRun,
   Approval,
   AgentConfigRevision,
@@ -31,6 +32,7 @@ export interface DetectedAdapterModel {
   model: string;
   provider: string;
   source: string;
+  candidates?: string[];
 }
 
 export interface ClaudeLoginResult {
@@ -189,20 +191,11 @@ export const agentsApi = {
       idempotencyKey?: string | null;
     },
     companyId?: string,
-  ) => api.post<HeartbeatRun | { status: "skipped" }>(agentPath(id, companyId, "/wakeup"), data),
+  ) => api.post<AgentWakeupResponse>(agentPath(id, companyId, "/wakeup"), data),
   loginWithClaude: (id: string, companyId?: string) =>
     api.post<ClaudeLoginResult>(agentPath(id, companyId, "/claude-login"), {}),
   availableSkills: () =>
     api.get<{ skills: AvailableSkill[] }>("/skills/available"),
-  uploadAvatar: async (id: string, file: File, companyId?: string) => {
-    const buffer = await file.arrayBuffer();
-    const safeFile = new File([buffer], file.name, { type: file.type });
-    const form = new FormData();
-    form.append("file", safeFile);
-    return api.postForm<AgentDetail>(withCompanyScope(`/agents/${encodeURIComponent(id)}/avatar`, companyId), form);
-  },
-  removeAvatar: (id: string, companyId?: string) =>
-    api.delete<AgentDetail>(withCompanyScope(`/agents/${encodeURIComponent(id)}/avatar`, companyId)),
 };
 
 export interface AvailableSkill {

@@ -12,11 +12,15 @@ export interface Company {
   budgetMonthlyCents: number;
   spentMonthlyCents: number;
   requireBoardApprovalForNewAgents: boolean;
+  feedbackDataSharingEnabled: boolean;
+  feedbackDataSharingConsentAt: Date | null;
+  feedbackDataSharingConsentByUserId: string | null;
+  feedbackDataSharingTermsVersion: string | null;
   brandColor: string | null;
-  providerApiKeys: Record<string, string>;
-  modelPolicy: Record<string, string>;
   logoAssetId: string | null;
   logoUrl: string | null;
+  providerApiKeys: Record<string, string> | null;
+  modelPolicy: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
 }

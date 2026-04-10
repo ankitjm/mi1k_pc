@@ -30,8 +30,8 @@ export const queryKeys = {
   },
   issues: {
     list: (companyId: string) => ["issues", companyId] as const,
-    search: (companyId: string, q: string, projectId?: string) =>
-      ["issues", companyId, "search", q, projectId ?? "__all-projects__"] as const,
+    search: (companyId: string, q: string, projectId?: string, limit?: number) =>
+      ["issues", companyId, "search", q, projectId ?? "__all-projects__", limit ?? "__no-limit__"] as const,
     listAssignedToMe: (companyId: string) => ["issues", companyId, "assigned-to-me"] as const,
     listMineByMe: (companyId: string) => ["issues", companyId, "mine-by-me"] as const,
     listTouchedByMe: (companyId: string) => ["issues", companyId, "touched-by-me"] as const,
@@ -39,10 +39,13 @@ export const queryKeys = {
     labels: (companyId: string) => ["issues", companyId, "labels"] as const,
     listByProject: (companyId: string, projectId: string) =>
       ["issues", companyId, "project", projectId] as const,
+    listByParent: (companyId: string, parentId: string) =>
+      ["issues", companyId, "parent", parentId] as const,
     listByExecutionWorkspace: (companyId: string, executionWorkspaceId: string) =>
       ["issues", companyId, "execution-workspace", executionWorkspaceId] as const,
     detail: (id: string) => ["issues", "detail", id] as const,
     comments: (issueId: string) => ["issues", "comments", issueId] as const,
+    feedbackVotes: (issueId: string) => ["issues", "feedback-votes", issueId] as const,
     attachments: (issueId: string) => ["issues", "attachments", issueId] as const,
     documents: (issueId: string) => ["issues", "documents", issueId] as const,
     documentRevisions: (issueId: string, key: string) => ["issues", "document-revisions", issueId, key] as const,
@@ -92,14 +95,6 @@ export const queryKeys = {
   auth: {
     session: ["auth", "session"] as const,
   },
-  assets: {
-    list: (companyId: string) => ["assets", companyId] as const,
-    workspaceFiles: (companyId: string) => ["assets", companyId, "workspace-files"] as const,
-  },
-  documents: {
-    list: (companyId: string) => ["documents", companyId] as const,
-    detail: (companyId: string, docId: string) => ["documents", companyId, docId] as const,
-  },
   instance: {
     generalSettings: ["instance", "general-settings"] as const,
     schedulerHeartbeats: ["instance", "scheduler-heartbeats"] as const,
@@ -113,6 +108,7 @@ export const queryKeys = {
   },
   dashboard: (companyId: string) => ["dashboard", companyId] as const,
   sidebarBadges: (companyId: string) => ["sidebar-badges", companyId] as const,
+  inboxDismissals: (companyId: string) => ["inbox-dismissals", companyId] as const,
   activity: (companyId: string) => ["activity", companyId] as const,
   costs: (companyId: string, from?: string, to?: string) =>
     ["costs", companyId, from, to] as const,
@@ -142,9 +138,6 @@ export const queryKeys = {
   skills: {
     available: ["skills", "available"] as const,
   },
-  wiki: {
-    list: (companyId: string) => ["wiki", companyId] as const,
-  },
   plugins: {
     all: ["plugins"] as const,
     examples: ["plugins", "examples"] as const,
@@ -155,4 +148,21 @@ export const queryKeys = {
     dashboard: (pluginId: string) => ["plugins", pluginId, "dashboard"] as const,
     logs: (pluginId: string) => ["plugins", pluginId, "logs"] as const,
   },
+  adapters: {
+    all: ["adapters"] as const,
+  },
+  assets: {
+    list: (companyId: string) => ["assets", companyId] as const,
+    workspaceFiles: (workspaceId: string) => ["assets", "workspace-files", workspaceId] as const,
+  },
+  documents: {
+    list: (companyId: string) => ["documents", companyId] as const,
+    detail: (companyId: string, id: string) => ["documents", companyId, "detail", id] as const,
+  },
+  wiki: {
+    list: (scope: string) => ["wiki", scope] as const,
+    entry: (path: string) => ["wiki", "entry", path] as const,
+  },
+  providerApiKeys: (companyId: string) => ["provider-api-keys", companyId] as const,
+  modelPolicy: (companyId: string) => ["model-policy", companyId] as const,
 };

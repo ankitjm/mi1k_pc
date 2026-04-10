@@ -70,10 +70,12 @@ export interface Config {
   storageS3Endpoint: string | undefined;
   storageS3Prefix: string;
   storageS3ForcePathStyle: boolean;
+  feedbackExportBackendUrl: string | undefined;
+  feedbackExportBackendToken: string | undefined;
   heartbeatSchedulerEnabled: boolean;
   heartbeatSchedulerIntervalMs: number;
   companyDeletionEnabled: boolean;
-  maxCompanies: number;
+  telemetryEnabled: boolean;
 }
 
 export function loadConfig(): Config {
@@ -121,6 +123,14 @@ export function loadConfig(): Config {
     process.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE !== undefined
       ? process.env.PAPERCLIP_STORAGE_S3_FORCE_PATH_STYLE === "true"
       : (fileStorage?.s3?.forcePathStyle ?? false);
+  const feedbackExportBackendUrl =
+    process.env.PAPERCLIP_FEEDBACK_EXPORT_BACKEND_URL?.trim() ||
+    process.env.PAPERCLIP_TELEMETRY_BACKEND_URL?.trim() ||
+    undefined;
+  const feedbackExportBackendToken =
+    process.env.PAPERCLIP_FEEDBACK_EXPORT_BACKEND_TOKEN?.trim() ||
+    process.env.PAPERCLIP_TELEMETRY_BACKEND_TOKEN?.trim() ||
+    undefined;
 
   const deploymentModeFromEnvRaw = process.env.PAPERCLIP_DEPLOYMENT_MODE;
   const deploymentModeFromEnv =
@@ -253,9 +263,11 @@ export function loadConfig(): Config {
     storageS3Endpoint,
     storageS3Prefix,
     storageS3ForcePathStyle,
+    feedbackExportBackendUrl,
+    feedbackExportBackendToken,
     heartbeatSchedulerEnabled: process.env.HEARTBEAT_SCHEDULER_ENABLED !== "false",
     heartbeatSchedulerIntervalMs: Math.max(10000, Number(process.env.HEARTBEAT_SCHEDULER_INTERVAL_MS) || 30000),
     companyDeletionEnabled,
-    maxCompanies: Number(process.env.PAPERCLIP_MAX_COMPANIES) || 0, // 0 = unlimited
+    telemetryEnabled: fileConfig?.telemetry?.enabled ?? true,
   };
 }

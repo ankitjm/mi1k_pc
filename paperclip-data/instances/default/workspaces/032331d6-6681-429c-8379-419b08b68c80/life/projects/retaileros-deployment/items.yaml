@@ -1,0 +1,100 @@
+facts:
+  - id: ros-live-url
+    type: deployment
+    subject: RetailerOS
+    predicate: live_at
+    object: "https://retaileros.in/app/"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-server
+    type: infrastructure
+    subject: RetailerOS
+    predicate: hosted_on
+    object: "khosha.tech (147.93.111.188)"
+    detail: "SSH: root@khosha.tech, pw: Kh0shaSystem&"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-source-path
+    type: infrastructure
+    subject: RetailerOS
+    predicate: source_path
+    object: "/var/www/retaileros/production/"
+    detail: "Edit here, then npm run build. Never use /Users/ankitmehta/Projects/retaileros/"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-port
+    type: infrastructure
+    subject: retaileros-prod (PM2)
+    predicate: listens_on
+    object: "port 3010"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-db
+    type: infrastructure
+    subject: RetailerOS
+    predicate: database
+    object: "PostgreSQL retaileros_prod @ localhost:5432"
+    detail: "user: retaileros_prod, pw: 5f9bd5ab97106969c30b6128d3805a46"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-vite-base
+    type: config
+    subject: vite.config.js
+    predicate: base
+    object: "/app/"
+    detail: "Assets served at /app/assets/ — required so landing page at / is not broken"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-demo-retailer
+    type: data
+    subject: demo retailer
+    predicate: seeded_in_db
+    object: "ROS-20260225-0001 / Khosha Electronics / mobile 9876543210"
+    detail: "id: demo-retailer-001, status: active"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-nginx-config
+    type: infrastructure
+    subject: nginx
+    predicate: config_path
+    object: "/etc/nginx/sites-enabled/retaileros.conf"
+    detail: "location ^~ /app/ proxies to 127.0.0.1:3010 stripping /app/ prefix; /api/ proxies to Express; / serves landing-page static"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-design-rule-center-col
+    type: design_constraint
+    subject: desktop layout
+    predicate: center_column_when_not_logged_in
+    object: "Decorative dark OS/RETAILER text — intentional. DO NOT replace with login form."
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-login-api
+    type: api
+    subject: login endpoint
+    predicate: path
+    object: "POST /api/auth/login { store_code }"
+    detail: "Queries retailers WHERE retailer_code = ? AND status = 'active'"
+    status: active
+    date: "2026-04-06"
+
+  - id: ros-desktop-login-location
+    type: design_constraint
+    subject: desktop login form
+    predicate: rendered_in
+    object: "LEFT SIDEBAR (launcher.js) — same as mobile, via renderAuth()"
+    detail: |
+      File: /var/www/retaileros/production/src/js/modules/launcher/launcher.js ~line 187
+      Both mobile and desktop now use: <div id="auth-container">$\{renderAuth()\}</div>
+      The isMob ternary was split: mobile gets py-10, desktop gets py-6 overflow-y-auto.
+      DO NOT move login to center column — OS/RETAILER decorative text stays there.
+    status: active
+    date: "2026-04-06"

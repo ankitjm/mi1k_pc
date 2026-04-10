@@ -1,0 +1,54 @@
+facts:
+  - id: ccrl-001
+    type: limit
+    subject: claude-code-max-200
+    predicate: 5_hour_window_messages
+    value: "~900 messages per 5-hour rolling window"
+    confidence: high
+    source: "usagebar.com research 2026-03-12"
+    status: active
+
+  - id: ccrl-002
+    type: limit
+    subject: claude-code-max-200
+    predicate: weekly_sonnet_hours
+    value: "240–480 hours of Sonnet per week"
+    confidence: medium
+    source: "usagebar.com research 2026-03-12"
+    status: active
+
+  - id: ccrl-003
+    type: behavior
+    subject: 5_hour_window
+    predicate: resets
+    value: "Rolling from first use, not at midnight or fixed clock time"
+    confidence: high
+    source: "usagebar.com research 2026-03-12"
+    status: active
+
+  - id: ccrl-004
+    type: planning_rule
+    subject: task_scheduling
+    predicate: max_heavy_tasks_per_window
+    value: "2 heavy tasks per 5-hour window (conservative); 3–4 maximum"
+    confidence: high
+    source: "derived heuristic 2026-03-12"
+    status: active
+
+  - id: ccrl-005
+    type: planning_rule
+    subject: task_scheduling
+    predicate: weekly_heavy_task_ceiling
+    value: "~42 heavy tasks per week (21 windows × 2)"
+    confidence: medium
+    source: "derived heuristic 2026-03-12"
+    status: active
+
+  - id: ccrl-006
+    type: fact
+    subject: weekly_limit
+    predicate: user_impact
+    value: "Less than 2% of users hit the weekly limit with normal usage patterns"
+    confidence: high
+    source: "Anthropic via usagebar.com 2026-03-12"
+    status: active

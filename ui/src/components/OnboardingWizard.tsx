@@ -8,8 +8,6 @@ import { companiesApi } from "../api/companies";
 import { goalsApi } from "../api/goals";
 import { agentsApi } from "../api/agents";
 import { issuesApi } from "../api/issues";
-import { knowledgeBaseApi } from "../api/knowledgeBase";
-import { AiRewriteButton } from "./AiRewriteButton";
 import { projectsApi } from "../api/projects";
 import { queryKeys } from "../lib/queryKeys";
 import { Dialog, DialogPortal } from "@/components/ui/dialog";
@@ -25,6 +23,9 @@ import {
   extractProviderIdWithFallback
 } from "../lib/model-utils";
 import { getUIAdapter } from "../adapters";
+import { listUIAdapters } from "../adapters";
+import { useDisabledAdaptersSync } from "../adapters/use-disabled-adapters";
+import { getAdapterDisplay } from "../adapters/adapter-display-registry";
 import { defaultCreateValues } from "./agent-config-defaults";
 import { parseOnboardingGoalInput } from "../lib/onboarding-goal";
 import {
@@ -32,6 +33,7 @@ import {
   buildOnboardingProjectPayload,
   selectDefaultCompanyGoalId
 } from "../lib/onboarding-launch";
+import { buildNewAgentRuntimeConfig } from "../lib/new-agent-runtime-config";
 import {
   DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX,
   DEFAULT_CODEX_LOCAL_MODEL
@@ -40,45 +42,22 @@ import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
 import { resolveRouteOnboardingOptions } from "../lib/onboarding-route";
 import { AsciiArtAnimation } from "./AsciiArtAnimation";
-import { OpenCodeLogoIcon } from "./OpenCodeLogoIcon";
 import {
   Building2,
   Bot,
-  Code,
-  Gem,
   ListTodo,
   Rocket,
   ArrowLeft,
   ArrowRight,
-  Terminal,
-  Sparkles,
-  MousePointer2,
   Check,
   Loader2,
   ChevronDown,
-  X,
-  Upload,
-  Link2,
-  FileText,
-  Trash2,
-  Globe,
+  X
 } from "lucide-react";
-import { HermesIcon } from "./HermesIcon";
+
 
 type Step = 1 | 2 | 3 | 4;
-type AdapterType =
-  | "claude_local"
-  | "claude_api"
-  | "codex_local"
-  | "gemini_local"
-  | "hermes_local"
-  | "opencode_local"
-  | "pi_local"
-  | "cursor"
-  | "http"
-  | "openrouter"
-  | "openai_compatible"
-  | "openclaw_gateway";
+type AdapterType = string;
 
 const DEFAULT_TASK_DESCRIPTION = `You are the CEO. You set the direction for the company.
 
@@ -94,6 +73,9 @@ export function OnboardingWizard() {
   const location = useLocation();
   const { companyPrefix } = useParams<{ companyPrefix?: string }>();
   const [routeDismissed, setRouteDismissed] = useState(false);
+
+  // Sync disabled adapter types from server so adapter grid filters them out
+  const disabledTypes = useDisabledAdaptersSync();
 
   const routeOnboardingOptions =
     companyPrefix && companiesLoading
@@ -121,14 +103,6 @@ export function OnboardingWizard() {
   // Step 1
   const [companyName, setCompanyName] = useState("");
   const [companyGoal, setCompanyGoal] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [additionalContext, setAdditionalContext] = useState("");
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [links, setLinks] = useState<string[]>([]);
-  const [linkInput, setLinkInput] = useState("");
-  const [kbBuilding, setKbBuilding] = useState(false);
-  const [kbResult, setKbResult] = useState<{ sources: number; errors: number } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Step 2
   const [agentName, setAgentName] = useState("CEO");
@@ -224,29 +198,33 @@ export function OnboardingWizard() {
     queryFn: () => agentsApi.adapterModels(createdCompanyId!, adapterType),
     enabled: Boolean(createdCompanyId) && effectiveOnboardingOpen && step === 2
   });
-  const isLocalAdapter =
-    adapterType === "claude_local" ||
-    adapterType === "codex_local" ||
-    adapterType === "gemini_local" ||
-    adapterType === "hermes_local" ||
-    adapterType === "opencode_local" ||
-    adapterType === "pi_local" ||
-    adapterType === "cursor";
+  const NONLOCAL_TYPES = new Set(["process", "http", "openclaw_gateway"]);
+  const isLocalAdapter = !NONLOCAL_TYPES.has(adapterType);
+
+  // Build adapter grids dynamically from the UI registry + display metadata.
+  // External/plugin adapters automatically appear with generic defaults.
+  const { recommendedAdapters, moreAdapters } = useMemo(() => {
+    const SYSTEM_ADAPTER_TYPES = new Set(["process", "http"]);
+    const all = listUIAdapters()
+      .filter((a) => !SYSTEM_ADAPTER_TYPES.has(a.type) && !disabledTypes.has(a.type))
+      .map((a) => ({ ...getAdapterDisplay(a.type), type: a.type }));
+
+    return {
+      recommendedAdapters: all.filter((a) => a.recommended),
+      moreAdapters: all.filter((a) => !a.recommended),
+    };
+  }, [disabledTypes]);
+  const COMMAND_PLACEHOLDERS: Record<string, string> = {
+    claude_local: "claude",
+    codex_local: "codex",
+    gemini_local: "gemini",
+    pi_local: "pi",
+    cursor: "agent",
+    opencode_local: "opencode",
+  };
   const effectiveAdapterCommand =
     command.trim() ||
-    (adapterType === "codex_local"
-      ? "codex"
-      : adapterType === "gemini_local"
-        ? "gemini"
-      : adapterType === "hermes_local"
-        ? "hermes"
-      : adapterType === "pi_local"
-      ? "pi"
-      : adapterType === "cursor"
-      ? "agent"
-      : adapterType === "opencode_local"
-      ? "opencode"
-      : "claude");
+    (COMMAND_PLACEHOLDERS[adapterType] ?? adapterType.replace(/_local$/, ""));
 
   useEffect(() => {
     if (step !== 2) return;
@@ -306,13 +284,6 @@ export function OnboardingWizard() {
     setError(null);
     setCompanyName("");
     setCompanyGoal("");
-    setIndustry("");
-    setAdditionalContext("");
-    setUploadedFiles([]);
-    setLinks([]);
-    setLinkInput("");
-    setKbBuilding(false);
-    setKbResult(null);
     setAgentName("CEO");
     setAdapterType("claude_local");
     setModel("");
@@ -434,26 +405,6 @@ export function OnboardingWizard() {
         setCreatedCompanyGoalId(null);
       }
 
-      // Build knowledge base if any files, links, or context were provided
-      if (uploadedFiles.length > 0 || links.length > 0 || additionalContext.trim() || industry.trim()) {
-        setKbBuilding(true);
-        try {
-          const result = await knowledgeBaseApi.build(company.id, {
-            companyName: companyName.trim(),
-            mission: companyGoal.trim() || undefined,
-            industry: industry.trim() || undefined,
-            additionalContext: additionalContext.trim() || undefined,
-            links: links.filter(Boolean),
-            files: uploadedFiles,
-          });
-          setKbResult({ sources: result.sources.length, errors: result.errors.length });
-        } catch {
-          // Non-blocking: knowledge base build failure shouldn't stop onboarding
-        } finally {
-          setKbBuilding(false);
-        }
-      }
-
       setStep(2);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create company");
@@ -510,15 +461,7 @@ export function OnboardingWizard() {
         role: "ceo",
         adapterType,
         adapterConfig: buildAdapterConfig(),
-        runtimeConfig: {
-          heartbeat: {
-            enabled: true,
-            intervalSec: 3600,
-            wakeOnDemand: true,
-            cooldownSec: 10,
-            maxConcurrentRuns: 1
-          }
-        }
+        runtimeConfig: buildNewAgentRuntimeConfig()
       });
       setCreatedAgentId(agent.id);
       queryClient.invalidateQueries({
@@ -769,148 +712,6 @@ export function OnboardingWizard() {
                       onChange={(e) => setCompanyGoal(e.target.value)}
                     />
                   </div>
-
-                  {/* Industry */}
-                  <div className="group">
-                    <label className="text-xs mb-1 block text-muted-foreground group-focus-within:text-foreground transition-colors">
-                      Industry (optional)
-                    </label>
-                    <input
-                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
-                      placeholder="e.g. SaaS, E-commerce, Healthcare, Fintech..."
-                      value={industry}
-                      onChange={(e) => setIndustry(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Knowledge Base Upload */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Upload className="h-3.5 w-3.5 text-muted-foreground" />
-                      <label className="text-xs text-muted-foreground">Upload knowledge base (optional)</label>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground/60 mb-2">
-                      PDFs, docs, spreadsheets — we'll extract the content and build context for your agents.
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,.json"
-                      className="hidden"
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files ?? []);
-                        setUploadedFiles((prev) => [...prev, ...files]);
-                        e.target.value = "";
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full rounded-md border border-dashed border-border px-3 py-3 text-xs text-muted-foreground hover:bg-accent/30 transition-colors text-center"
-                    >
-                      <FileText className="h-4 w-4 mx-auto mb-1 opacity-50" />
-                      Click to upload files
-                    </button>
-                    {uploadedFiles.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {uploadedFiles.map((f, i) => (
-                          <div key={`${f.name}-${i}`} className="flex items-center justify-between text-xs bg-muted/30 rounded px-2 py-1">
-                            <span className="truncate">{f.name} <span className="text-muted-foreground">({(f.size / 1024).toFixed(0)} KB)</span></span>
-                            <button
-                              type="button"
-                              onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))}
-                              className="text-muted-foreground hover:text-destructive ml-2 shrink-0"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Links */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                      <label className="text-xs text-muted-foreground">Website & reference links (optional)</label>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground/60 mb-2">
-                      We'll fetch these and extract brand guidelines, content structure, and context.
-                    </p>
-                    <div className="flex gap-2">
-                      <input
-                        className="flex-1 rounded-md border border-border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
-                        placeholder="https://yourcompany.com"
-                        value={linkInput}
-                        onChange={(e) => setLinkInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && linkInput.trim()) {
-                            e.preventDefault();
-                            setLinks((prev) => [...prev, linkInput.trim()]);
-                            setLinkInput("");
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        disabled={!linkInput.trim()}
-                        onClick={() => {
-                          if (linkInput.trim()) {
-                            setLinks((prev) => [...prev, linkInput.trim()]);
-                            setLinkInput("");
-                          }
-                        }}
-                        className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent/30 transition-colors disabled:opacity-30"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    {links.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {links.map((link, i) => (
-                          <div key={`${link}-${i}`} className="flex items-center justify-between text-xs bg-muted/30 rounded px-2 py-1">
-                            <span className="truncate text-blue-500">{link}</span>
-                            <button
-                              type="button"
-                              onClick={() => setLinks((prev) => prev.filter((_, j) => j !== i))}
-                              className="text-muted-foreground hover:text-destructive ml-2 shrink-0"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Additional Context */}
-                  <div className="group">
-                    <label className="text-xs mb-1 block text-muted-foreground group-focus-within:text-foreground transition-colors">
-                      Additional context (optional)
-                    </label>
-                    <textarea
-                      className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[60px]"
-                      placeholder="Anything else your agents should know — tone of voice, key products, target audience, internal processes..."
-                      value={additionalContext}
-                      onChange={(e) => setAdditionalContext(e.target.value)}
-                    />
-                  </div>
-
-                  {kbBuilding && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Building knowledge base...
-                    </div>
-                  )}
-                  {kbResult && (
-                    <div className="text-xs text-green-600 dark:text-green-400">
-                      <Check className="h-3 w-3 inline mr-1" />
-                      Knowledge base built from {kbResult.sources} source{kbResult.sources !== 1 ? "s" : ""}
-                      {kbResult.errors > 0 && <span className="text-amber-500 ml-1">({kbResult.errors} failed)</span>}
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -946,32 +747,17 @@ export function OnboardingWizard() {
                       Adapter type
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                      {[
-                        {
-                          value: "claude_local" as const,
-                          label: "Claude Code",
-                          icon: Sparkles,
-                          desc: "Local Claude agent",
-                          recommended: true
-                        },
-                        {
-                          value: "codex_local" as const,
-                          label: "Codex",
-                          icon: Code,
-                          desc: "Local Codex agent",
-                          recommended: true
-                        }
-                      ].map((opt) => (
+                      {recommendedAdapters.map((opt) => (
                         <button
-                          key={opt.value}
+                          key={opt.type}
                           className={cn(
                             "flex flex-col items-center gap-1.5 rounded-md border p-3 text-xs transition-colors relative",
-                            adapterType === opt.value
+                            adapterType === opt.type
                               ? "border-foreground bg-accent"
                               : "border-border hover:bg-accent/50"
                           )}
                           onClick={() => {
-                            const nextType = opt.value as AdapterType;
+                            const nextType = opt.type;
                             setAdapterType(nextType);
                             if (nextType === "codex_local" && !model) {
                               setModel(DEFAULT_CODEX_LOCAL_MODEL);
@@ -989,7 +775,7 @@ export function OnboardingWizard() {
                           <opt.icon className="h-4 w-4" />
                           <span className="font-medium">{opt.label}</span>
                           <span className="text-muted-foreground text-[10px]">
-                            {opt.desc}
+                            {opt.description}
                           </span>
                         </button>
                       ))}
@@ -1010,78 +796,21 @@ export function OnboardingWizard() {
 
                     {showMoreAdapters && (
                       <div className="grid grid-cols-2 gap-2 mt-2">
-                        {[
-                          {
-                            value: "gemini_local" as const,
-                            label: "Gemini CLI",
-                            icon: Gem,
-                            desc: "Local Gemini agent"
-                          },
-                          {
-                            value: "opencode_local" as const,
-                            label: "OpenCode",
-                            icon: OpenCodeLogoIcon,
-                            desc: "Local multi-provider agent"
-                          },
-                          {
-                            value: "pi_local" as const,
-                            label: "Pi",
-                            icon: Terminal,
-                            desc: "Local Pi agent"
-                          },
-                          {
-                            value: "cursor" as const,
-                            label: "Cursor",
-                            icon: MousePointer2,
-                            desc: "Local Cursor agent"
-                          },
-                          {
-                            value: "hermes_local" as const,
-                            label: "Hermes Agent",
-                            icon: HermesIcon,
-                            desc: "Local multi-provider agent"
-                          },
-                          {
-                            value: "claude_api" as const,
-                            label: "Claude API",
-                            icon: Sparkles,
-                            desc: "Anthropic API with key"
-                          },
-                          {
-                            value: "openrouter" as const,
-                            label: "OpenRouter",
-                            icon: Sparkles,
-                            desc: "200+ models via OpenRouter"
-                          },
-                          {
-                            value: "openai_compatible" as const,
-                            label: "OpenAI Compat.",
-                            icon: Terminal,
-                            desc: "Groq, Together, Ollama, etc."
-                          },
-                          {
-                            value: "openclaw_gateway" as const,
-                            label: "OpenClaw Gateway",
-                            icon: Bot,
-                            desc: "Invoke OpenClaw via gateway protocol",
-                            comingSoon: true,
-                            disabledLabel: "Configure OpenClaw within the App"
-                          }
-                        ].map((opt) => (
-                          <button
-                            key={opt.value}
-                            disabled={!!opt.comingSoon}
-                            className={cn(
-                              "flex flex-col items-center gap-1.5 rounded-md border p-3 text-xs transition-colors relative",
-                              opt.comingSoon
-                                ? "border-border opacity-40 cursor-not-allowed"
-                                : adapterType === opt.value
-                                ? "border-foreground bg-accent"
-                                : "border-border hover:bg-accent/50"
-                            )}
-                            onClick={() => {
-                              if (opt.comingSoon) return;
-                              const nextType = opt.value as AdapterType;
+                        {moreAdapters.map((opt) => (
+                           <button
+                             key={opt.type}
+                             disabled={!!opt.comingSoon}
+                             className={cn(
+                               "flex flex-col items-center gap-1.5 rounded-md border p-3 text-xs transition-colors relative",
+                               opt.comingSoon
+                                 ? "border-border opacity-40 cursor-not-allowed"
+                                 : adapterType === opt.type
+                                 ? "border-foreground bg-accent"
+                                 : "border-border hover:bg-accent/50"
+                             )}
+                             onClick={() => {
+                               if (opt.comingSoon) return;
+                               const nextType = opt.type;
                               setAdapterType(nextType);
                               if (nextType === "gemini_local" && !model) {
                                 setModel(DEFAULT_GEMINI_LOCAL_MODEL);
@@ -1104,9 +833,8 @@ export function OnboardingWizard() {
                             <span className="font-medium">{opt.label}</span>
                             <span className="text-muted-foreground text-[10px]">
                               {opt.comingSoon
-                                ? (opt as { disabledLabel?: string })
-                                    .disabledLabel ?? "Coming soon"
-                                : opt.desc}
+                                ? opt.disabledLabel ?? "Coming soon"
+                                : opt.description}
                             </span>
                           </button>
                         ))}
@@ -1115,13 +843,7 @@ export function OnboardingWizard() {
                   </div>
 
                   {/* Conditional adapter fields */}
-                  {(adapterType === "claude_local" ||
-                    adapterType === "codex_local" ||
-                    adapterType === "gemini_local" ||
-                    adapterType === "hermes_local" ||
-                    adapterType === "opencode_local" ||
-                    adapterType === "pi_local" ||
-                    adapterType === "cursor") && (
+                  {isLocalAdapter && (
                     <div className="space-y-3">
                       <div>
                         <label className="text-xs text-muted-foreground mb-1 block">
@@ -1401,15 +1123,6 @@ export function OnboardingWizard() {
                       value={taskDescription}
                       onChange={(e) => setTaskDescription(e.target.value)}
                     />
-                    {taskDescription.trim().length > 10 && createdCompanyId && (
-                      <div className="mt-1">
-                        <AiRewriteButton
-                          text={taskDescription}
-                          onAccept={(rewritten) => setTaskDescription(rewritten)}
-                          context="This is a task description for an AI agent. Make it actionable with clear deliverables."
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               )}

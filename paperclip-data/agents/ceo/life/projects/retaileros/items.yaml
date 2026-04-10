@@ -1,0 +1,71 @@
+- id: ros-001
+  fact: "RetailerOS original app is vanilla JS with Tailwind CDN, ~129 JS files, ~20k lines, Express + PostgreSQL backend"
+  source: codebase audit KHO-208
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-002
+  fact: "Original code preserved on Gitea at git.khosha.tech/khosha-bot/RetailerOS master branch, production/ folder"
+  source: board comment on KHO-270
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-003
+  fact: "Board directed full reset on 2026-04-09 — restore original app, apply only security fixes, no UI changes"
+  source: board comment on KHO-270
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-004
+  fact: "Marketing brand is Kosha Systems; billing entity is Unhive Ventures LLP (U-N-H-I-V-E), GST-registered"
+  source: board comment on KHO-270
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-005
+  fact: "retaileros.in is the product domain (landing + app at /app); khoshasystems.com is the company domain"
+  source: board comment on KHO-270
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-006
+  fact: "Product page already exists at khoshasystems.com/products/retaileros — do NOT create a new one, interlink instead"
+  source: board comment on KHO-270
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-007
+  fact: "Pricing: ₹9,999/quarter yearly (₹39,996/year billed annually) or ₹14,999/quarter"
+  source: board-approved in KHO-224
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-008
+  fact: "Board wants onboarding flow: landing page Get Started → wizard → account created → app, no approval gate"
+  source: board comment on KHO-270
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-009
+  fact: "Payment integration needed: Razorpay or Stripe, invoicing under Unhive Ventures LLP"
+  source: board comment on KHO-270
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-010
+  fact: "5,000 Indian retailer CSV ready (KHO-220 done), marketing campaign not yet started"
+  source: task history
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-011
+  fact: "React rebuild was a mistake — agents over-scoped login bug fix KHO-206 into full rebuild KHO-208 through KHO-212"
+  source: CEO self-assessment
+  recorded: 2026-04-09
+  status: active
+
+- id: ros-012
+  fact: "Board wants priority modules working first: invoicing, inventory, sales/POS, schemes, CRM, reports — promise remaining features in 30-40 days"
+  source: board comment on KHO-270
+  recorded: 2026-04-09
+  status: active

@@ -39,7 +39,6 @@ function statusLabel(status: string): string {
 interface Agent {
   id: string;
   name: string;
-  avatarUrl?: string | null;
 }
 
 interface KanbanBoardProps {
@@ -64,16 +63,22 @@ function KanbanColumn({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
+  const isEmpty = issues.length === 0;
+
   return (
-    <div className="flex flex-col min-w-[260px] w-[260px] shrink-0">
-      <div className="flex items-center gap-2 px-2 py-2 mb-1">
+    <div className={`flex flex-col shrink-0 transition-[width,min-width] ${isEmpty && !isOver ? "min-w-[48px] w-[48px]" : "min-w-[260px] w-[260px]"}`}>
+      <div className={`flex items-center gap-2 px-2 py-2 mb-1 ${isEmpty && !isOver ? "justify-center" : ""}`}>
         <StatusIcon status={status} />
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {statusLabel(status)}
-        </span>
-        <span className="text-xs text-muted-foreground/60 ml-auto tabular-nums">
-          {issues.length}
-        </span>
+        {(!isEmpty || isOver) && (
+          <>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {statusLabel(status)}
+            </span>
+            <span className="text-xs text-muted-foreground/60 ml-auto tabular-nums">
+              {issues.length}
+            </span>
+          </>
+        )}
       </div>
       <div
         ref={setNodeRef}
@@ -131,11 +136,6 @@ function KanbanCard({
     return agents.find((a) => a.id === id)?.name ?? null;
   };
 
-  const agentAvatarUrl = (id: string | null) => {
-    if (!id || !agents) return null;
-    return agents.find((a) => a.id === id)?.avatarUrl ?? null;
-  };
-
   return (
     <div
       ref={setNodeRef}
@@ -155,7 +155,7 @@ function KanbanCard({
         }}
       >
         <div className="flex items-start gap-1.5 mb-1.5">
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground font-mono shrink-0">
+          <span className="text-xs text-muted-foreground font-mono shrink-0">
             {issue.identifier ?? issue.id.slice(0, 8)}
           </span>
           {isLive && (
@@ -171,7 +171,7 @@ function KanbanCard({
           {issue.assigneeAgentId && (() => {
             const name = agentName(issue.assigneeAgentId);
             return name ? (
-              <Identity name={name} avatarUrl={agentAvatarUrl(issue.assigneeAgentId)} size="xs" />
+              <Identity name={name} size="xs" />
             ) : (
               <span className="text-xs text-muted-foreground font-mono">
                 {issue.assigneeAgentId.slice(0, 8)}

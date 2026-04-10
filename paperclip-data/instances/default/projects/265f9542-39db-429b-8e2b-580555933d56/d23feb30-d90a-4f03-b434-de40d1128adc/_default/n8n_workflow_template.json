@@ -1,0 +1,236 @@
+{
+  "name": "Netra AI MVP: Gupshup → Ollama → Google Sheets",
+  "description": "Complete workflow: WhatsApp message in → Mistral 7B AI response → Lead logged to Google Sheets",
+  "tags": ["netra-ai", "whatsapp", "ollama", "gupshup"],
+  "nodes": [
+    {
+      "displayName": "Gupshup Webhook",
+      "name": "webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 100],
+      "webhookId": "{{ WEBHOOK_ID }}",
+      "parameters": {
+        "path": "gupshup/message",
+        "httpMethod": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "displayName": "Extract Customer & Message",
+      "name": "extract_message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [300, 100],
+      "parameters": {
+        "assignments": [
+          {
+            "name": "customer_phone",
+            "value": "={{$json.payload.source}}"
+          },
+          {
+            "name": "message_text",
+            "value": "={{$json.payload.message.text}}"
+          },
+          {
+            "name": "message_id",
+            "value": "={{$json.payload.id}}"
+          },
+          {
+            "name": "destination",
+            "value": "={{$json.payload.destination}}"
+          },
+          {
+            "name": "timestamp",
+            "value": "={{new Date().toISOString()}}"
+          }
+        ]
+      }
+    },
+    {
+      "displayName": "Call Ollama LLM",
+      "name": "ollama_llm",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [500, 100],
+      "parameters": {
+        "url": "http://ollama:11434/api/generate",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\"model\": \"mistral\", \"prompt\": \"{{$json.message_text}}\", \"stream\": false}",
+        "returnFullResponse": true
+      },
+      "notesInFlow": true,
+      "notes": "Calls local Ollama service on port 11434"
+    },
+    {
+      "displayName": "Extract AI Response",
+      "name": "extract_response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [700, 100],
+      "parameters": {
+        "assignments": [
+          {
+            "name": "ai_response",
+            "value": "={{$json.body.response}}"
+          },
+          {
+            "name": "response_time_ms",
+            "value": "={{$json.headers['x-response-time'] || 'N/A'}}"
+          }
+        ]
+      }
+    },
+    {
+      "displayName": "Send Response via Gupshup",
+      "name": "send_gupshup_response",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 100],
+      "parameters": {
+        "url": "https://api.gupshup.io/wa/api/v1/messages",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {{$env.GUPSHUP_API_KEY}}"
+        },
+        "body": "{\"channel\": \"whatsapp\", \"source\": \"{{$json.destination}}\", \"destination\": \"{{$json.customer_phone}}\", \"message\": {\"type\": \"text\", \"text\": \"{{$json.ai_response.substring(0, 1000)}}\"}}"
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "displayName": "Log to Google Sheets",
+      "name": "log_sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1100, 100],
+      "parameters": {
+        "operation": "append",
+        "sheetId": "={{$env.GOOGLE_SHEET_ID}}",
+        "range": "A:F",
+        "columns": ["Timestamp", "Phone", "Message", "AI Response", "Response Time", "Status"],
+        "data": [
+          [
+            "={{$json.timestamp}}",
+            "={{$json.customer_phone}}",
+            "={{$json.message_text}}",
+            "={{$json.ai_response.substring(0, 500)}}",
+            "={{$json.response_time_ms}}",
+            "={{$json.statusCode === 200 ? 'Sent' : 'Failed'}}"
+          ]
+        ]
+      }
+    },
+    {
+      "displayName": "Response Success Handler",
+      "name": "success_response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1300, 50],
+      "parameters": {
+        "responseCode": 200
+      }
+    },
+    {
+      "displayName": "Error Handler",
+      "name": "error_response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1300, 150],
+      "parameters": {
+        "responseCode": 500
+      }
+    }
+  ],
+  "connections": {
+    "webhook": {
+      "main": [
+        [
+          {
+            "node": "extract_message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract_message": {
+      "main": [
+        [
+          {
+            "node": "ollama_llm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ollama_llm": {
+      "main": [
+        [
+          {
+            "node": "extract_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract_response": {
+      "main": [
+        [
+          {
+            "node": "send_gupshup_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_gupshup_response": {
+      "main": [
+        [
+          {
+            "node": "log_sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "error_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log_sheets": {
+      "main": [
+        [
+          {
+            "node": "success_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "errorHandler": "error_response",
+    "timeout": 30000,
+    "retryOnError": true,
+    "retryWaitTime": 5000
+  },
+  "environment": {
+    "GUPSHUP_API_KEY": "{{env.GUPSHUP_API_KEY}}",
+    "GOOGLE_SHEET_ID": "{{env.GOOGLE_SHEET_ID}}",
+    "OLLAMA_HOST": "http://ollama:11434"
+  }
+}

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ThumbnailOS — Free AI Thumbnail Audit for Your YouTube Channel</title>
+  <meta name="description" content="Get a free AI-powered thumbnail audit for your YouTube channel. Boost your CTR with actionable recommendations." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #E53E3E;
+      --red-dark: #C53030;
+      --dark: #1A202C;
+      --dark-2: #2D3748;
+      --gray: #718096;
+      --light: #F7FAFC;
+      --white: #FFFFFF;
+      --green: #38A169;
+      --border: #E2E8F0;
+      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--white);
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    /* ---- Nav ---- */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--dark);
+      text-decoration: none;
+    }
+
+    .logo span { color: var(--red); }
+
+    nav a.cta-link {
+      background: var(--red);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    nav a.cta-link:hover { background: var(--red-dark); }
+
+    /* ---- Hero ---- */
+    .hero {
+      background: linear-gradient(135deg, var(--dark) 0%, var(--dark-2) 100%);
+      color: var(--white);
+      padding: 80px 24px 60px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(229, 62, 62, 0.2);
+      color: #FC8181;
+      border: 1px solid rgba(229, 62, 62, 0.4);
+      padding: 4px 14px;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 20px;
+      max-width: 720px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    h1 em {
+      color: var(--red);
+      font-style: normal;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: #CBD5E0;
+      max-width: 520px;
+      margin: 0 auto 36px;
+    }
+
+    /* ---- Signup form ---- */
+    .form-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 480px;
+      margin: 0 auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    .form-card h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 6px;
+    }
+
+    .form-card p {
+      font-size: 0.875rem;
+      color: var(--gray);
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--dark-2);
+      margin-bottom: 5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: var(--font);
+      color: var(--dark);
+      transition: border-color 0.2s;
+      background: var(--white);
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--red);
+    }
+
+    input::placeholder { color: #A0AEC0; }
+
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--red);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 6px;
+      font-family: var(--font);
+    }
+
+    .submit-btn:hover { background: var(--red-dark); }
+    .submit-btn:active { transform: scale(0.99); }
+
+    .form-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--gray);
+      margin-top: 12px;
+    }
+
+    /* ---- Success state ---- */
+    .success-msg {
+      display: none;
+      text-align: center;
+      padding: 16px;
+    }
+
+    .success-msg .check {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .success-msg h3 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 6px;
+    }
+
+    .success-msg p {
+      font-size: 0.875rem;
+      color: var(--gray);
+    }
+
+    /* ---- Social proof strip ---- */
+    .stats-strip {
+      background: var(--light);
+      padding: 32px 24px;
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+    }
+
+    .stat { text-align: center; }
+    .stat-number { font-size: 1.75rem; font-weight: 800; color: var(--dark); }
+    .stat-label { font-size: 0.8rem; color: var(--gray); font-weight: 500; }
+
+    /* ---- How it works ---- */
+    section { padding: 64px 24px; max-width: 960px; margin: 0 auto; }
+
+    h2.section-title {
+      text-align: center;
+      font-size: 1.75rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .section-sub {
+      text-align: center;
+      color: var(--gray);
+      margin-bottom: 48px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+    }
+
+    .step {
+      background: var(--light);
+      border-radius: 12px;
+      padding: 28px;
+      border: 1px solid var(--border);
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: var(--red);
+      color: #fff;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 0.95rem;
+      margin-bottom: 14px;
+    }
+
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .step p { font-size: 0.875rem; color: var(--gray); }
+
+    /* ---- Sample report ---- */
+    .sample-report {
+      background: var(--light);
+      border-radius: 16px;
+      padding: 32px;
+      border: 1px solid var(--border);
+      margin-top: 0;
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .big-score {
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--red);
+      line-height: 1;
+    }
+
+    .big-score span { font-size: 1.2rem; color: var(--gray); }
+
+    .score-label { color: var(--gray); font-size: 0.875rem; max-width: 220px; }
+
+    .findings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 500px) { .findings { grid-template-columns: 1fr; } }
+
+    .finding-block h4 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    .finding-block.problems h4 { color: var(--red); }
+    .finding-block.fixes h4 { color: var(--green); }
+
+    .finding-block ul { list-style: none; }
+    .finding-block ul li {
+      font-size: 0.875rem;
+      color: var(--dark-2);
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+
+    .finding-block ul li:last-child { border-bottom: none; }
+
+    .finding-block.problems li::before { content: "✗"; color: var(--red); flex-shrink: 0; }
+    .finding-block.fixes li::before { content: "✓"; color: var(--green); flex-shrink: 0; }
+
+    /* ---- FAQ ---- */
+    .faq-list { max-width: 640px; margin: 0 auto; }
+
+    details {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    summary {
+      padding: 16px 20px;
+      font-weight: 600;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; font-size: 1.2rem; color: var(--gray); }
+    details[open] summary::after { content: "−"; }
+
+    details p { padding: 0 20px 16px; color: var(--gray); font-size: 0.9rem; }
+
+    /* ---- Footer ---- */
+    footer {
+      background: var(--dark);
+      color: #CBD5E0;
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 0.875rem;
+    }
+
+    footer a { color: #CBD5E0; }
+
+    /* ---- Error state ---- */
+    .form-error {
+      display: none;
+      background: #FFF5F5;
+      border: 1px solid #FEB2B2;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.875rem;
+      color: var(--red);
+      margin-bottom: 12px;
+    }
+
+    /* ---- Loading spinner ---- */
+    .spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <a href="/" class="logo">Thumbnail<span>OS</span></a>
+    <a href="#signup" class="cta-link">Get Free Audit</a>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">Free for Indian Creators</div>
+    <h1>Your thumbnails are <em>losing</em> you views.<br>We'll show you exactly why.</h1>
+    <p>Get a free AI-powered thumbnail audit for your YouTube channel — score, problems, and fixes for your last 10 videos.</p>
+
+    <div class="form-card" id="signup">
+      <h2>Get your free audit</h2>
+      <p>Takes 60 seconds. No credit card required.</p>
+
+      <div class="form-error" id="formError"></div>
+
+      <form id="auditForm">
+        <div class="form-group">
+          <label for="name">Your Name</label>
+          <input type="text" id="name" name="name" placeholder="Rahul Sharma" required autocomplete="name" />
+        </div>
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="rahul@example.com" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label for="channel">YouTube Channel URL</label>
+          <input type="url" id="channel" name="channel"
+            placeholder="https://www.youtube.com/@yourchannel"
+            required
+            pattern="https?://(www\.)?youtube\.com/.*" />
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">
+          <span id="btnText">Get My Free Audit →</span>
+          <div class="spinner" id="spinner"></div>
+        </button>
+
+        <p class="form-note">We'll email your audit within 24 hours. No spam, ever.</p>
+      </form>
+
+      <div class="success-msg" id="successMsg">
+        <div class="check">🎉</div>
+        <h3>You're on the list!</h3>
+        <p>We'll analyze your thumbnails and email your audit report within 24 hours.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="stats-strip">
+    <div class="stat">
+      <div class="stat-number">10+</div>
+      <div class="stat-label">Thumbnails Analyzed</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number">48h</div>
+      <div class="stat-label">Average Delivery</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number">Free</div>
+      <div class="stat-label">First Audit</div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <section>
+    <h2 class="section-title">How it works</h2>
+    <p class="section-sub">From signup to actionable report in under 24 hours.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Submit your channel</h3>
+        <p>Share your YouTube channel URL. We pull your last 10 videos automatically.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>AI analysis</h3>
+        <p>Our AI scores each thumbnail on composition, contrast, text clarity, and click-worthiness.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Get your report</h3>
+        <p>Receive a PDF with per-video scores, specific problems, and actionable fixes — emailed to you.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Fix &amp; grow</h3>
+        <p>Apply the recommendations. Higher CTR = more views from the same upload schedule.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sample report -->
+  <section style="padding-top: 0;">
+    <h2 class="section-title">What you'll get</h2>
+    <p class="section-sub">A sample from a real audit — for every one of your last 10 videos.</p>
+
+    <div class="sample-report">
+      <div style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--gray); margin-bottom:12px;">
+        Sample — Video #3
+      </div>
+      <div style="font-size:0.95rem; font-weight:700; margin-bottom:16px; color:var(--dark);">
+        "I Tried Every Indian Street Food in 24 Hours"
+      </div>
+      <div class="score-row">
+        <div class="big-score">4 <span>/ 10</span></div>
+        <div class="score-label">Thumbnail is losing clicks to competitors with stronger visual hierarchy.</div>
+      </div>
+      <div class="findings">
+        <div class="finding-block problems">
+          <h4>Problems</h4>
+          <ul>
+            <li>Text too small — unreadable at mobile thumbnail size</li>
+            <li>Face emotion is neutral, not conveying excitement or surprise</li>
+            <li>Background colors blend with subject, losing contrast</li>
+          </ul>
+        </div>
+        <div class="finding-block fixes">
+          <h4>Fixes</h4>
+          <ul>
+            <li>Increase title text to 72pt+, add drop shadow for legibility</li>
+            <li>Reshoot face with open-mouth expression and direct eye contact</li>
+            <li>Add deep red or yellow background swatch behind subject</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section>
+    <h2 class="section-title">Questions</h2>
+    <p class="section-sub"></p>
+    <div class="faq-list">
+      <details>
+        <summary>Is this really free?</summary>
+        <p>Yes. Your first full audit (last 10 videos, detailed PDF) is completely free. We offer a paid subscription for weekly ongoing audits.</p>
+      </details>
+      <details>
+        <summary>How long does the audit take?</summary>
+        <p>We aim to deliver within 24 hours of signup. Usually faster.</p>
+      </details>
+      <details>
+        <summary>Do I need to give you access to my channel?</summary>
+        <p>No. We only need your public channel URL. We use the YouTube public API to fetch your thumbnails — no login required.</p>
+      </details>
+      <details>
+        <summary>What's the paid plan?</summary>
+        <p>For ₹999/month you get weekly automated audits, priority delivery, and direct recommendations from our AI. You can upgrade after your free audit.</p>
+      </details>
+      <details>
+        <summary>What channels qualify?</summary>
+        <p>Any public YouTube channel with at least 5 uploaded videos. We focus on Indian creators but analyze channels globally.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Bottom CTA -->
+  <div style="text-align:center; padding: 48px 24px; background: var(--light);">
+    <h2 style="font-size:1.75rem; font-weight:800; margin-bottom:12px;">Stop guessing. Start fixing.</h2>
+    <p style="color:var(--gray); margin-bottom:24px;">Your next viral video might just need a better thumbnail.</p>
+    <a href="#signup" class="submit-btn" style="display:inline-block; width:auto; padding:14px 32px; text-decoration:none; border-radius:8px;">
+      Get My Free Audit →
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>© 2026 ThumbnailOS · <a href="mailto:hello@thumbnailos.in">hello@thumbnailos.in</a></p>
+  </footer>
+
+  <script>
+    const form = document.getElementById('auditForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const spinner = document.getElementById('spinner');
+    const successMsg = document.getElementById('successMsg');
+    const formError = document.getElementById('formError');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      formError.style.display = 'none';
+
+      const data = {
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        channel: document.getElementById('channel').value.trim(),
+      };
+
+      // Basic validation
+      if (!data.name || !data.email || !data.channel) {
+        showError('Please fill in all fields.');
+        return;
+      }
+
+      if (!data.channel.includes('youtube.com')) {
+        showError('Please enter a valid YouTube channel URL (e.g. https://www.youtube.com/@yourchannel).');
+        return;
+      }
+
+      // Loading state
+      submitBtn.disabled = true;
+      btnText.style.display = 'none';
+      spinner.style.display = 'block';
+
+      try {
+        const res = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || 'Something went wrong. Please try again.');
+        }
+
+        // Success
+        form.style.display = 'none';
+        successMsg.style.display = 'block';
+
+      } catch (err) {
+        showError(err.message);
+        submitBtn.disabled = false;
+        btnText.style.display = 'inline';
+        spinner.style.display = 'none';
+      }
+    });
+
+    function showError(msg) {
+      formError.textContent = msg;
+      formError.style.display = 'block';
+    }
+  </script>
+
+</body>
+</html>

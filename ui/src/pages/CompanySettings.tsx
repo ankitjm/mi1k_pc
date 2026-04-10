@@ -1,5 +1,7 @@
 import { ChangeEvent, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@/lib/router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { DEFAULT_FEEDBACK_DATA_SHARING_TERMS_VERSION } from "@paperclipai/shared";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useToast } from "../context/ToastContext";
@@ -21,6 +23,8 @@ type AgentSnippetInput = {
   connectionCandidates?: string[] | null;
   testResolutionUrl?: string | null;
 };
+
+const FEEDBACK_TERMS_URL = import.meta.env.VITE_FEEDBACK_TERMS_URL?.trim() || "https://paperclip.ing/tos";
 
 export function CompanySettings() {
   const {
@@ -78,6 +82,27 @@ export function CompanySettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
     }
+  });
+
+  const feedbackSharingMutation = useMutation({
+    mutationFn: (enabled: boolean) =>
+      companiesApi.update(selectedCompanyId!, {
+        feedbackDataSharingEnabled: enabled,
+      }),
+    onSuccess: (_company, enabled) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
+      pushToast({
+        title: enabled ? "Feedback sharing enabled" : "Feedback sharing disabled",
+        tone: "success",
+      });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Failed to update feedback sharing",
+        body: err instanceof Error ? err.message : "Unknown error",
+        tone: "error",
+      });
+    },
   });
 
   const inviteMutation = useMutation({
@@ -155,104 +180,6 @@ export function CompanySettings() {
       setLogoUploadError(null);
       syncLogoState(company.logoUrl);
     }
-  });
-
-  // ---- Provider API Keys ----
-  const API_KEY_PROVIDERS = [
-    { id: "anthropic", label: "Claude (Anthropic)", placeholder: "sk-ant-..." },
-    { id: "openrouter", label: "OpenRouter", placeholder: "sk-or-..." },
-    { id: "openai", label: "OpenAI / Compatible", placeholder: "sk-..." },
-  ];
-  const [apiKeyDrafts, setApiKeyDrafts] = useState<Record<string, string>>({});
-  const [apiKeySaving, setApiKeySaving] = useState<string | null>(null);
-
-  const apiKeysQuery = useQuery({
-    queryKey: ["company-api-keys", selectedCompanyId],
-    queryFn: () => companiesApi.getProviderApiKeys(selectedCompanyId!),
-    enabled: !!selectedCompanyId,
-  });
-
-  const setApiKeyMutation = useMutation({
-    mutationFn: ({ provider, apiKey }: { provider: string; apiKey: string }) =>
-      companiesApi.setProviderApiKey(selectedCompanyId!, provider, apiKey),
-    onSuccess: (_, { provider }) => {
-      pushToast({ title: `${provider} API key saved` });
-      setApiKeyDrafts((d) => ({ ...d, [provider]: "" }));
-      setApiKeySaving(null);
-      queryClient.invalidateQueries({ queryKey: ["company-api-keys", selectedCompanyId] });
-    },
-    onError: () => setApiKeySaving(null),
-  });
-
-  const deleteApiKeyMutation = useMutation({
-    mutationFn: (provider: string) =>
-      companiesApi.deleteProviderApiKey(selectedCompanyId!, provider),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["company-api-keys", selectedCompanyId] });
-    },
-  });
-
-  // ---- Model Policy ----
-  const DEFAULT_MODEL_POLICY: Record<string, string> = {
-    ceo: "anthropic/claude-sonnet-4",
-    cto: "anthropic/claude-sonnet-4",
-    engineer: "anthropic/claude-haiku-4",
-    designer: "anthropic/claude-haiku-4",
-    pm: "anthropic/claude-haiku-4",
-    qa: "google/gemini-2.5-flash",
-    devops: "anthropic/claude-haiku-4",
-    researcher: "google/gemini-2.5-flash",
-    cmo: "google/gemini-2.5-flash",
-    cfo: "google/gemini-2.5-flash",
-    general: "anthropic/claude-haiku-4",
-    default: "anthropic/claude-haiku-4",
-  };
-
-  const POPULAR_MODELS = [
-    { id: "anthropic/claude-opus-4", label: "Claude Opus 4 ($$$)" },
-    { id: "anthropic/claude-sonnet-4", label: "Claude Sonnet 4 ($$)" },
-    { id: "anthropic/claude-haiku-4", label: "Claude Haiku 4 ($)" },
-    { id: "openai/gpt-4o", label: "GPT-4o ($$)" },
-    { id: "openai/gpt-4o-mini", label: "GPT-4o Mini ($)" },
-    { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro ($$)" },
-    { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash ($)" },
-    { id: "deepseek/deepseek-r1", label: "DeepSeek R1 ($)" },
-    { id: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick ($)" },
-    { id: "mistralai/mistral-large", label: "Mistral Large ($$)" },
-  ];
-
-  const ROLE_LABELS: Record<string, string> = {
-    ceo: "CEO", cto: "CTO", cmo: "CMO", cfo: "CFO",
-    engineer: "Engineer", designer: "Designer", pm: "PM",
-    qa: "QA", devops: "DevOps", researcher: "Researcher",
-    general: "General", default: "Default (fallback)",
-  };
-
-  const [modelPolicyDraft, setModelPolicyDraft] = useState<Record<string, string>>({});
-  const [modelPolicyDirty, setModelPolicyDirty] = useState(false);
-
-  const modelPolicyQuery = useQuery({
-    queryKey: ["company-model-policy", selectedCompanyId],
-    queryFn: () => companiesApi.getModelPolicy(selectedCompanyId!),
-    enabled: !!selectedCompanyId,
-  });
-
-  useEffect(() => {
-    if (modelPolicyQuery.data?.policy) {
-      const merged = { ...DEFAULT_MODEL_POLICY, ...modelPolicyQuery.data.policy };
-      setModelPolicyDraft(merged);
-      setModelPolicyDirty(false);
-    }
-  }, [modelPolicyQuery.data]);
-
-  const modelPolicyMutation = useMutation({
-    mutationFn: (policy: Record<string, string>) =>
-      companiesApi.updateModelPolicy(selectedCompanyId!, policy),
-    onSuccess: () => {
-      pushToast({ title: "Model policy saved" });
-      setModelPolicyDirty(false);
-      queryClient.invalidateQueries({ queryKey: ["company-model-policy", selectedCompanyId] });
-    },
   });
 
   function handleLogoFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -474,104 +401,6 @@ export function CompanySettings() {
         </div>
       )}
 
-      {/* Provider API Keys */}
-      <div className="space-y-4">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Provider API Keys
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Set API keys once here. All agents using Claude API, OpenRouter, or OpenAI Compatible adapters will inherit these automatically.
-        </p>
-        <div className="space-y-3">
-          {API_KEY_PROVIDERS.map((prov) => {
-            const existingMasked = apiKeysQuery.data?.keys?.[prov.id] ?? "";
-            const hasKey = !!existingMasked;
-            const draft = apiKeyDrafts[prov.id] ?? "";
-            return (
-              <div key={prov.id} className="rounded-md border border-border px-4 py-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{prov.label}</span>
-                  {hasKey && (
-                    <span className="text-xs text-green-600 dark:text-green-400 font-mono">
-                      {existingMasked}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="password"
-                    className="flex-1 rounded-md border border-border px-2.5 py-1.5 bg-transparent outline-none text-sm font-mono placeholder:text-muted-foreground/40"
-                    placeholder={hasKey ? "Replace existing key..." : prov.placeholder}
-                    value={draft}
-                    onChange={(e) => setApiKeyDrafts((d) => ({ ...d, [prov.id]: e.target.value }))}
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!draft.trim() || apiKeySaving === prov.id}
-                    onClick={() => {
-                      setApiKeySaving(prov.id);
-                      setApiKeyMutation.mutate({ provider: prov.id, apiKey: draft.trim() });
-                    }}
-                  >
-                    {apiKeySaving === prov.id ? "Saving..." : "Save"}
-                  </Button>
-                  {hasKey && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-500 hover:text-red-600"
-                      onClick={() => deleteApiKeyMutation.mutate(prov.id)}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Model Policy */}
-      <div className="space-y-4">
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Model Policy
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Assign default AI models by role. Agents inherit these unless overridden in their own config. Uses OpenRouter model IDs.
-        </p>
-        <div className="space-y-2">
-          {Object.entries(ROLE_LABELS).map(([role, label]) => (
-            <div key={role} className="flex items-center gap-3 rounded-md border border-border px-3 py-2">
-              <span className="text-xs font-medium w-24 shrink-0">{label}</span>
-              <select
-                className="flex-1 rounded-md border border-border px-2 py-1 bg-transparent text-xs font-mono outline-none"
-                value={modelPolicyDraft[role] ?? ""}
-                onChange={(e) => {
-                  setModelPolicyDraft((prev) => ({ ...prev, [role]: e.target.value }));
-                  setModelPolicyDirty(true);
-                }}
-              >
-                <option value="">— not set —</option>
-                {POPULAR_MODELS.map((m) => (
-                  <option key={m.id} value={m.id}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-        {modelPolicyDirty && (
-          <Button
-            size="sm"
-            onClick={() => modelPolicyMutation.mutate(modelPolicyDraft)}
-            disabled={modelPolicyMutation.isPending}
-          >
-            {modelPolicyMutation.isPending ? "Saving..." : "Save Model Policy"}
-          </Button>
-        )}
-      </div>
-
       {/* Hiring */}
       <div className="space-y-4" data-testid="company-settings-team-section">
         <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -585,6 +414,48 @@ export function CompanySettings() {
             onChange={(v) => settingsMutation.mutate(v)}
             toggleTestId="company-settings-team-approval-toggle"
           />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Feedback Sharing
+        </div>
+        <div className="space-y-3 rounded-md border border-border px-4 py-4">
+          <ToggleField
+            label="Allow sharing voted AI outputs with Paperclip Labs"
+            hint="Only AI-generated outputs you explicitly vote on are eligible for feedback sharing."
+            checked={!!selectedCompany.feedbackDataSharingEnabled}
+            onChange={(enabled) => feedbackSharingMutation.mutate(enabled)}
+          />
+          <p className="text-sm text-muted-foreground">
+            Votes are always saved locally. This setting controls whether voted AI outputs may also be marked for sharing with Paperclip Labs.
+          </p>
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <div>
+              Terms version: {selectedCompany.feedbackDataSharingTermsVersion ?? DEFAULT_FEEDBACK_DATA_SHARING_TERMS_VERSION}
+            </div>
+            {selectedCompany.feedbackDataSharingConsentAt ? (
+              <div>
+                Enabled {new Date(selectedCompany.feedbackDataSharingConsentAt).toLocaleString()}
+                {selectedCompany.feedbackDataSharingConsentByUserId
+                  ? ` by ${selectedCompany.feedbackDataSharingConsentByUserId}`
+                  : ""}
+              </div>
+            ) : (
+              <div>Sharing is currently disabled.</div>
+            )}
+            {FEEDBACK_TERMS_URL ? (
+              <a
+                href={FEEDBACK_TERMS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex text-foreground underline underline-offset-4"
+              >
+                Read our terms of service
+              </a>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -678,16 +549,16 @@ export function CompanySettings() {
           </p>
           <div className="mt-3 flex items-center gap-2">
             <Button size="sm" variant="outline" asChild>
-              <a href="/company/export">
+              <Link to="/company/export">
                 <Download className="mr-1.5 h-3.5 w-3.5" />
                 Export
-              </a>
+              </Link>
             </Button>
             <Button size="sm" variant="outline" asChild>
-              <a href="/company/import">
+              <Link to="/company/import">
                 <Upload className="mr-1.5 h-3.5 w-3.5" />
                 Import
-              </a>
+              </Link>
             </Button>
           </div>
         </div>

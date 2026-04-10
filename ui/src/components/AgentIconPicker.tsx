@@ -28,10 +28,9 @@ interface AgentIconPickerProps {
   value: string | null | undefined;
   onChange: (icon: string) => void;
   children: React.ReactNode;
-  extraFooter?: React.ReactNode;
 }
 
-export function AgentIconPicker({ value, onChange, children, extraFooter }: AgentIconPickerProps) {
+export function AgentIconPicker({ value, onChange, children }: AgentIconPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -75,7 +74,6 @@ export function AgentIconPicker({ value, onChange, children, extraFooter }: Agen
             <p className="col-span-7 text-xs text-muted-foreground text-center py-2">No icons match</p>
           )}
         </div>
-        {extraFooter && <div className="mt-2 border-t pt-2">{extraFooter}</div>}
       </PopoverContent>
     </Popover>
   );

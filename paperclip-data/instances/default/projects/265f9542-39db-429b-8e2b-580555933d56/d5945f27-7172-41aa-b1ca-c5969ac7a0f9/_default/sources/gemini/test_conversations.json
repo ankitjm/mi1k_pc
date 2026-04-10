@@ -1,0 +1,19 @@
+[
+  {
+    "title": "Machine Learning Pipelines",
+    "createTime": "2024-03-30T14:00:00.000Z",
+    "updateTime": "2024-03-30T15:00:00.000Z",
+    "entries": [
+      {
+        "role": "User",
+        "text": "What's the best approach for building ML pipelines in production?",
+        "createTime": "2024-03-30T14:00:00.000Z"
+      },
+      {
+        "role": "Model",
+        "text": "Use a framework like Kubeflow or MLflow for orchestration. Structure your pipeline as: data ingestion, feature engineering, model training, evaluation, and deployment stages. Each stage should be idempotent and versioned.",
+        "createTime": "2024-03-30T14:01:00.000Z"
+      }
+    ]
+  }
+]

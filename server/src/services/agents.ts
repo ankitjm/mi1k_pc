@@ -1,18 +1,20 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, ne, or, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import {
   agents,
-  agentAvatars,
   agentConfigRevisions,
   agentApiKeys,
   agentRuntimeState,
   agentTaskSessions,
   agentWakeupRequests,
-  assets,
+  activityLog,
   costEvents,
   heartbeatRunEvents,
   heartbeatRuns,
+  issueExecutionDecisions,
+  issues,
+  issueComments,
 } from "@paperclipai/db";
 import { isUuidLike, normalizeAgentUrlKey } from "@paperclipai/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
@@ -201,22 +203,11 @@ export function agentService(db: Db) {
     };
   }
 
-  function normalizeAgentRow(row: typeof agents.$inferSelect & { avatarUrl?: string | null }) {
+  function normalizeAgentRow(row: typeof agents.$inferSelect) {
     return withUrlKey({
       ...row,
-      avatarUrl: row.avatarUrl ?? null,
       permissions: normalizeAgentPermissions(row.permissions, row.role),
     });
-  }
-
-  async function hydrateAvatarUrls<T extends { id: string }>(rows: T[]): Promise<(T & { avatarUrl: string | null })[]> {
-    if (rows.length === 0) return rows as (T & { avatarUrl: string | null })[];
-    const avatarRows = await db
-      .select({ agentId: agentAvatars.agentId, assetId: agentAvatars.assetId })
-      .from(agentAvatars)
-      .where(inArray(agentAvatars.agentId, rows.map((r) => r.id)));
-    const avatarMap = new Map(avatarRows.map((r) => [r.agentId, `/api/assets/${r.assetId}/content`]));
-    return rows.map((row) => ({ ...row, avatarUrl: avatarMap.get(row.id) ?? null }));
   }
 
   async function getMonthlySpendByAgentIds(companyId: string, agentIds: string[]) {
@@ -259,8 +250,7 @@ export function agentService(db: Db) {
       .then((rows) => rows[0] ?? null);
     if (!row) return null;
     const [hydrated] = await hydrateAgentSpend([row]);
-    const [withAvatar] = await hydrateAvatarUrls([hydrated]);
-    return normalizeAgentRow(withAvatar);
+    return normalizeAgentRow(hydrated);
   }
 
   async function ensureManager(companyId: string, managerId: string) {
@@ -390,8 +380,7 @@ export function agentService(db: Db) {
       }
       const rows = await db.select().from(agents).where(and(...conditions));
       const hydrated = await hydrateAgentSpend(rows);
-      const withAvatars = await hydrateAvatarUrls(hydrated);
-      return withAvatars.map(normalizeAgentRow);
+      return hydrated.map(normalizeAgentRow);
     },
 
     getById,
@@ -489,8 +478,20 @@ export function agentService(db: Db) {
 
       return db.transaction(async (tx) => {
         await tx.update(agents).set({ reportsTo: null }).where(eq(agents.reportsTo, id));
+        await tx
+          .update(issues)
+          .set({ assigneeAgentId: null, createdByAgentId: null })
+          .where(or(eq(issues.assigneeAgentId, id), eq(issues.createdByAgentId, id)));
         await tx.delete(heartbeatRunEvents).where(eq(heartbeatRunEvents.agentId, id));
         await tx.delete(agentTaskSessions).where(eq(agentTaskSessions.agentId, id));
+        await tx.delete(activityLog).where(
+          or(
+            eq(activityLog.agentId, id),
+            sql`${activityLog.runId} in (select ${heartbeatRuns.id} from ${heartbeatRuns} where ${heartbeatRuns.agentId} = ${id})`,
+          ),
+        );
+        await tx.delete(issueExecutionDecisions).where(eq(issueExecutionDecisions.actorAgentId, id));
+        await tx.delete(issueComments).where(eq(issueComments.authorAgentId, id));
         await tx.delete(heartbeatRuns).where(eq(heartbeatRuns.agentId, id));
         await tx.delete(agentWakeupRequests).where(eq(agentWakeupRequests.agentId, id));
         await tx.delete(agentApiKeys).where(eq(agentApiKeys.agentId, id));
@@ -703,30 +704,6 @@ export function agentService(db: Db) {
         return { agent: null, ambiguous: true } as const;
       }
       return { agent: null, ambiguous: false } as const;
-    },
-
-    setAvatar: async (agentId: string, assetId: string) => {
-      await db
-        .insert(agentAvatars)
-        .values({ agentId, assetId })
-        .onConflictDoUpdate({
-          target: agentAvatars.agentId,
-          set: { assetId, updatedAt: new Date() },
-        });
-      return getById(agentId);
-    },
-
-    removeAvatar: async (agentId: string) => {
-      const existing = await db
-        .select({ assetId: agentAvatars.assetId })
-        .from(agentAvatars)
-        .where(eq(agentAvatars.agentId, agentId))
-        .then((rows) => rows[0] ?? null);
-      if (existing) {
-        await db.delete(agentAvatars).where(eq(agentAvatars.agentId, agentId));
-        await db.delete(assets).where(eq(assets.id, existing.assetId));
-      }
-      return getById(agentId);
     },
   };
 }

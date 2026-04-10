@@ -1,0 +1,21 @@
+{
+  "name": "thumbnailos-pipeline",
+  "version": "1.0.0",
+  "description": "ThumbnailOS audit generation pipeline",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/youtube.test.js tests/analyzer.test.js tests/pipeline.test.js tests/batch.test.js",
+    "test:watch": "node --test --watch tests/",
+    "pipeline:test": "PIPELINE_USE_MOCK=true node src/index.js --channel https://www.youtube.com/@mkbhd"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "axios": "^1.7.0",
+    "pdfkit": "^0.15.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

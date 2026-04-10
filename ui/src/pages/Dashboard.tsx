@@ -14,7 +14,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { MetricCard } from "../components/MetricCard";
 import { EmptyState } from "../components/EmptyState";
 import { StatusIcon } from "../components/StatusIcon";
-import { PriorityIcon } from "../components/PriorityIcon";
+
 import { ActivityRow } from "../components/ActivityRow";
 import { Identity } from "../components/Identity";
 import { timeAgo } from "../lib/timeAgo";
@@ -168,7 +168,7 @@ export function Dashboard() {
       return (
         <EmptyState
           icon={LayoutDashboard}
-          message="Welcome to Milk. Set up your first company and agent to get started."
+          message="Welcome to Paperclip. Set up your first company and agent to get started."
           action="Get Started"
           onAction={openOnboarding}
         />
@@ -187,7 +187,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {error && <p className="text-sm text-muted-foreground">Unable to load dashboard. Please try refreshing.</p>}
+      {error && <p className="text-sm text-destructive">{error.message}</p>}
 
       {hasNoAgents && (
         <div className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-500/25 dark:bg-amber-950/60">
@@ -283,7 +283,20 @@ export function Dashboard() {
             />
           </div>
 
-          {/* Charts hidden for cleaner dashboard */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <ChartCard title="Run Activity" subtitle="Last 14 days">
+              <RunActivityChart runs={runs ?? []} />
+            </ChartCard>
+            <ChartCard title="Issues by Priority" subtitle="Last 14 days">
+              <PriorityChart issues={issues ?? []} />
+            </ChartCard>
+            <ChartCard title="Issues by Status" subtitle="Last 14 days">
+              <IssueStatusChart issues={issues ?? []} />
+            </ChartCard>
+            <ChartCard title="Success Rate" subtitle="Last 14 days">
+              <SuccessRateChart runs={runs ?? []} />
+            </ChartCard>
+          </div>
 
           <PluginSlotOutlet
             slotTypes={["dashboardWidget"]}
@@ -292,15 +305,15 @@ export function Dashboard() {
             itemClassName="rounded-lg border bg-card p-4 shadow-sm"
           />
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-4">
             {/* Recent Activity */}
             {recentActivity.length > 0 && (
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Recent Activity
                 </h3>
-                <div className="rounded-xl border border-border divide-y divide-border/60 overflow-hidden">
-                  {recentActivity.slice(0, 6).map((event) => (
+                <div className="border border-border divide-y divide-border overflow-hidden">
+                  {recentActivity.map((event) => (
                     <ActivityRow
                       key={event.id}
                       event={event}
@@ -316,33 +329,48 @@ export function Dashboard() {
 
             {/* Recent Tasks */}
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Recent Tasks
               </h3>
               {recentIssues.length === 0 ? (
-                <div className="rounded-xl border border-border p-6">
+                <div className="border border-border p-4">
                   <p className="text-sm text-muted-foreground">No tasks yet.</p>
                 </div>
               ) : (
-                <div className="rounded-xl border border-border divide-y divide-border/60 overflow-hidden">
-                  {recentIssues.slice(0, 6).map((issue) => (
+                <div className="border border-border divide-y divide-border overflow-hidden">
+                  {recentIssues.slice(0, 10).map((issue) => (
                     <Link
                       key={issue.id}
                       to={`/issues/${issue.identifier ?? issue.id}`}
-                      className="px-4 py-3.5 text-sm cursor-pointer hover:bg-accent/50 transition-colors no-underline text-inherit block"
+                      className="px-4 py-3 text-sm cursor-pointer hover:bg-accent/50 transition-colors no-underline text-inherit block"
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="shrink-0">
+                      <div className="flex items-start gap-2 sm:items-center sm:gap-3">
+                        {/* Status icon - left column on mobile */}
+                        <span className="shrink-0 sm:hidden">
                           <StatusIcon status={issue.status} />
                         </span>
-                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
-                          {issue.identifier ?? issue.id.slice(0, 8)}
-                        </span>
-                        <span className="flex-1 min-w-0 truncate">
-                          {issue.title}
-                        </span>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {timeAgo(issue.updatedAt)}
+
+                        {/* Right column on mobile: title + metadata stacked */}
+                        <span className="flex min-w-0 flex-1 flex-col gap-1 sm:contents">
+                          <span className="line-clamp-2 text-sm sm:order-2 sm:flex-1 sm:min-w-0 sm:line-clamp-none sm:truncate">
+                            {issue.title}
+                          </span>
+                          <span className="flex items-center gap-2 sm:order-1 sm:shrink-0">
+                            <span className="hidden sm:inline-flex"><StatusIcon status={issue.status} /></span>
+                            <span className="text-xs font-mono text-muted-foreground">
+                              {issue.identifier ?? issue.id.slice(0, 8)}
+                            </span>
+                            {issue.assigneeAgentId && (() => {
+                              const name = agentName(issue.assigneeAgentId);
+                              return name
+                                ? <span className="hidden sm:inline-flex"><Identity name={name} size="sm" /></span>
+                                : null;
+                            })()}
+                            <span className="text-xs text-muted-foreground sm:hidden">&middot;</span>
+                            <span className="text-xs text-muted-foreground shrink-0 sm:order-last">
+                              {timeAgo(issue.updatedAt)}
+                            </span>
+                          </span>
                         </span>
                       </div>
                     </Link>

@@ -1,0 +1,68 @@
+[
+  {
+    "title": "Python Data Structures",
+    "create_time": 1711929600.0,
+    "update_time": 1711933200.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": ["msg1"]
+      },
+      "msg1": {
+        "id": "msg1",
+        "message": {
+          "author": {"role": "user"},
+          "content": {"content_type": "text", "parts": ["What are the most efficient data structures in Python for handling large datasets?"]},
+          "create_time": 1711929600.0
+        },
+        "parent": "root",
+        "children": ["msg2"]
+      },
+      "msg2": {
+        "id": "msg2",
+        "message": {
+          "author": {"role": "assistant"},
+          "content": {"content_type": "text", "parts": ["For large datasets in Python, consider using numpy arrays for numerical data, pandas DataFrames for tabular data, and collections.deque for queue operations. Each has O(1) or O(n) characteristics depending on the operation."]},
+          "create_time": 1711929660.0
+        },
+        "parent": "msg1",
+        "children": []
+      }
+    }
+  },
+  {
+    "title": "React Component Architecture",
+    "create_time": 1711843200.0,
+    "update_time": 1711846800.0,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "message": null,
+        "parent": null,
+        "children": ["msg1"]
+      },
+      "msg1": {
+        "id": "msg1",
+        "message": {
+          "author": {"role": "user"},
+          "content": {"content_type": "text", "parts": ["How should I structure React components for a large application?"]},
+          "create_time": 1711843200.0
+        },
+        "parent": "root",
+        "children": ["msg2"]
+      },
+      "msg2": {
+        "id": "msg2",
+        "message": {
+          "author": {"role": "assistant"},
+          "content": {"content_type": "text", "parts": ["Use atomic design principles: atoms, molecules, organisms, templates, and pages. Keep components small and focused on a single responsibility."]},
+          "create_time": 1711843260.0
+        },
+        "parent": "msg1",
+        "children": []
+      }
+    }
+  }
+]

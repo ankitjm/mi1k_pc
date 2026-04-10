@@ -1,0 +1,20 @@
+{
+  "name": "thumbnailos-scripts",
+  "version": "1.0.0",
+  "description": "ThumbnailOS backend scripts",
+  "main": "audit-generator.js",
+  "scripts": {
+    "audit": "node audit-generator.js",
+    "research": "node youtube-research.js",
+    "landing": "node landing-server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.15.1",
+    "pg": "^8.20.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

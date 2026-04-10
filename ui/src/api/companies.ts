@@ -28,7 +28,14 @@ export const companiesApi = {
     data: Partial<
       Pick<
         Company,
-        "name" | "description" | "status" | "budgetMonthlyCents" | "requireBoardApprovalForNewAgents" | "brandColor" | "logoAssetId"
+        | "name"
+        | "description"
+        | "status"
+        | "budgetMonthlyCents"
+        | "requireBoardApprovalForNewAgents"
+        | "feedbackDataSharingEnabled"
+        | "brandColor"
+        | "logoAssetId"
       >
     >,
   ) => api.patch<Company>(`/companies/${companyId}`, data),
@@ -56,13 +63,13 @@ export const companiesApi = {
   importBundle: (data: CompanyPortabilityImportRequest) =>
     api.post<CompanyPortabilityImportResult>("/companies/import", data),
   getProviderApiKeys: (companyId: string) =>
-    api.get<{ keys: Record<string, string>; providers: string[] }>(`/companies/${companyId}/provider-api-keys`),
-  setProviderApiKey: (companyId: string, provider: string, apiKey: string) =>
-    api.put<{ ok: true; provider: string }>(`/companies/${companyId}/provider-api-keys`, { provider, apiKey }),
+    api.get<{ keys: Record<string, string> }>(`/companies/${companyId}/provider-api-keys`),
+  setProviderApiKey: (companyId: string, provider: string, value: string) =>
+    api.put<{ ok: true }>(`/companies/${companyId}/provider-api-keys`, { provider, value }),
   deleteProviderApiKey: (companyId: string, provider: string) =>
     api.delete<{ ok: true }>(`/companies/${companyId}/provider-api-keys/${provider}`),
   getModelPolicy: (companyId: string) =>
-    api.get<{ policy: Record<string, string> }>(`/companies/${companyId}/model-policy`),
-  updateModelPolicy: (companyId: string, policy: Record<string, string>) =>
-    api.put<{ ok: true; policy: Record<string, string> }>(`/companies/${companyId}/model-policy`, { policy }),
+    api.get<{ policy: Record<string, unknown> }>(`/companies/${companyId}/model-policy`),
+  updateModelPolicy: (companyId: string, policy: Record<string, unknown>) =>
+    api.put<{ ok: true }>(`/companies/${companyId}/model-policy`, { policy }),
 };

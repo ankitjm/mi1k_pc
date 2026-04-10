@@ -13,7 +13,6 @@ import {
   Settings,
   FileText,
   Zap,
-  Brain,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarSection } from "./SidebarSection";
@@ -28,23 +27,9 @@ import { useInboxBadge } from "../hooks/useInboxBadge";
 import { Button } from "@/components/ui/button";
 import { PluginSlotOutlet } from "@/plugins/slots";
 
-function useServerVersion() {
-  const { data } = useQuery({
-    queryKey: ["server-version"],
-    queryFn: async () => {
-      const res = await fetch("/api/health");
-      const json = await res.json();
-      return json.version as string;
-    },
-    staleTime: 300_000,
-  });
-  return data ?? "";
-}
-
 export function Sidebar() {
   const { openNewIssue } = useDialog();
   const { selectedCompanyId, selectedCompany } = useCompany();
-  const version = useServerVersion();
   const inboxBadge = useInboxBadge(selectedCompanyId);
   const { data: liveRuns } = useQuery({
     queryKey: queryKeys.liveRuns(selectedCompanyId!),
@@ -88,13 +73,13 @@ export function Sidebar() {
 
       <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-auto-hide flex flex-col gap-4 px-3 py-2">
         <div className="flex flex-col gap-0.5">
-          {/* New Task button aligned with nav items */}
+          {/* New Issue button aligned with nav items */}
           <button
             onClick={() => openNewIssue()}
             className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
           >
             <SquarePen className="h-4 w-4 shrink-0" />
-            <span className="truncate">New Task</span>
+            <span className="truncate">New Issue</span>
           </button>
           <SidebarNavItem to="/dashboard" label="Dashboard" icon={LayoutDashboard} liveCount={liveRunCount} />
           <SidebarNavItem
@@ -115,12 +100,11 @@ export function Sidebar() {
         </div>
 
         <SidebarSection label="Work">
-          <SidebarNavItem to="/issues" label="Tasks" icon={CircleDot} />
+          <SidebarNavItem to="/issues" label="Issues" icon={CircleDot} />
           <SidebarNavItem to="/routines" label="Routines" icon={Repeat} textBadge="Beta" textBadgeTone="amber" />
           <SidebarNavItem to="/goals" label="Goals" icon={Target} />
           <SidebarNavItem to="/documents" label="Documents" icon={FileText} />
           <SidebarNavItem to="/workflows" label="Workflows" icon={Zap} />
-          <SidebarNavItem to="/brand-brain" label="Brand Brain" icon={Brain} />
         </SidebarSection>
 
         <SidebarProjects />
@@ -142,12 +126,6 @@ export function Sidebar() {
           itemClassName="rounded-lg border border-border p-3"
           missingBehavior="placeholder"
         />
-
-        {version && (
-          <div className="mt-auto pt-4 px-2 pb-2">
-            <p className="text-[10px] text-muted-foreground/50 text-center">Mi1k v{version}</p>
-          </div>
-        )}
       </nav>
     </aside>
   );

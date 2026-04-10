@@ -1,0 +1,44 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": true,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "tag:#chatgpt",
+      "color": {
+        "a": 1,
+        "rgb": 1949337
+      }
+    },
+    {
+      "query": "tag:#claude",
+      "color": {
+        "a": 1,
+        "rgb": 14177041
+      }
+    },
+    {
+      "query": "tag:#gemini",
+      "color": {
+        "a": 1,
+        "rgb": 2928485
+      }
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": true,
+  "textFadeMultiplier": -1.5,
+  "nodeSizeMultiplier": 1.2,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": false,
+  "centerStrength": 0.5,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 100,
+  "scale": 1,
+  "close": false
+}

@@ -16,9 +16,15 @@ export const companies = pgTable(
     requireBoardApprovalForNewAgents: boolean("require_board_approval_for_new_agents")
       .notNull()
       .default(true),
+    feedbackDataSharingEnabled: boolean("feedback_data_sharing_enabled")
+      .notNull()
+      .default(false),
+    feedbackDataSharingConsentAt: timestamp("feedback_data_sharing_consent_at", { withTimezone: true }),
+    feedbackDataSharingConsentByUserId: text("feedback_data_sharing_consent_by_user_id"),
+    feedbackDataSharingTermsVersion: text("feedback_data_sharing_terms_version"),
     brandColor: text("brand_color"),
-    providerApiKeys: jsonb("provider_api_keys").notNull().default({}),
-    modelPolicy: jsonb("model_policy").notNull().default({}),
+    providerApiKeys: jsonb("provider_api_keys"),
+    modelPolicy: jsonb("model_policy"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

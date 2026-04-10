@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
-import { MilkLogo } from "./MilkLogo";
-import { useQueries, useQuery } from "@tanstack/react-query";
-import { healthApi } from "../api/health";
+import { Paperclip, Plus } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
 import {
   DndContext,
   closestCenter,
@@ -162,11 +160,6 @@ export function CompanyRail() {
   const location = useLocation();
   const isInstanceRoute = location.pathname.startsWith("/instance/");
   const highlightedCompanyId = isInstanceRoute ? null : selectedCompanyId;
-
-  // Check maxCompanies feature flag to restrict company creation on client instances
-  const healthData = useQuery({ queryKey: queryKeys.health, queryFn: () => healthApi.get(), staleTime: 60000 });
-  const maxCompanies = (healthData.data as any)?.features?.maxCompanies ?? 0;
-  const canAddCompany = maxCompanies === 0 || companies.length < maxCompanies;
   const sidebarCompanies = useMemo(
     () => companies.filter((company) => company.status !== "archived"),
     [companies],
@@ -276,9 +269,9 @@ export function CompanyRail() {
 
   return (
     <div className="flex flex-col items-center w-[72px] shrink-0 h-full bg-background border-r border-border">
-      {/* Milk logo - aligned with top sections (implied line, no visible border) */}
-      <div className="flex items-center justify-center h-12 w-full shrink-0 px-3">
-        <MilkLogo className="h-6 w-auto" />
+      {/* Paperclip icon - aligned with top sections (implied line, no visible border) */}
+      <div className="flex items-center justify-center h-12 w-full shrink-0">
+        <Paperclip className="h-5 w-5 text-foreground" />
       </div>
 
       {/* Company list */}
@@ -314,8 +307,8 @@ export function CompanyRail() {
       {/* Separator before add button */}
       <div className="w-8 h-px bg-border mx-auto shrink-0" />
 
-      {/* Add company button — hidden when maxCompanies reached */}
-      {canAddCompany && <div className="flex items-center justify-center py-2 shrink-0">
+      {/* Add company button */}
+      <div className="flex items-center justify-center py-2 shrink-0">
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             <button
@@ -330,7 +323,7 @@ export function CompanyRail() {
             <p>Add company</p>
           </TooltipContent>
         </Tooltip>
-      </div>}
+      </div>
     </div>
   );
 }

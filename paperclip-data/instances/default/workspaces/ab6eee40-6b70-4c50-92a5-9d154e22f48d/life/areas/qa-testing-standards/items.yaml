@@ -1,0 +1,204 @@
+facts:
+  - id: "qa-smoke-test-checklist"
+    title: "Smoke Test Checklist — Website"
+    category: "test-procedure"
+    status: "active"
+    content: |
+      ## Quick Site Verification
+      - [ ] Site responds with HTTP 200
+      - [ ] HTTPS redirect working (HTTP → 301 → HTTPS)
+      - [ ] Security headers present (CSP, HSTS, X-Frame-Options, X-Content-Type-Options)
+      - [ ] Meta tags present (title, description, OG tags)
+      - [ ] Sitemap.xml valid
+      - [ ] robots.txt configured
+      - [ ] Analytics firing (GA4)
+      - [ ] Key pages accessible (homepage, /products, subpages)
+      - [ ] Images loading with alt text
+      - [ ] Forms visible and functional
+      - [ ] CTAs working
+      - [ ] Mobile viewport responsive (test at 375px width)
+      - [ ] No console errors visible
+      - [ ] Logo/branding assets loading
+    tags:
+      - smoke-test
+      - website
+      - khoshasystems.com
+
+  - id: "qa-regression-test-checklist"
+    title: "Full Regression Test Checklist — RetailerOS"
+    category: "test-procedure"
+    status: "active"
+    content: |
+      ## Authentication
+      - [ ] Login with valid store code
+      - [ ] Login with invalid store code (error message)
+      - [ ] Mobile OTP flow
+      - [ ] Session persistence (page refresh)
+      - [ ] Logout clears session
+      - [ ] Remember-me (if available)
+      
+      ## Dashboard & Core Screens
+      - [ ] Dashboard loads with user data
+      - [ ] Sales list visible, pagination works
+      - [ ] New sale creation end-to-end
+      - [ ] Customer list and detail views
+      - [ ] Inventory list and product detail
+      - [ ] Schemes list accessible
+      - [ ] Reports/analytics charts render
+      
+      ## Onboarding
+      - [ ] Registration form submits
+      - [ ] Duplicate mobile number rejected
+      - [ ] Admin approval workflow
+      - [ ] Store code delivery via WhatsApp (if enabled)
+      
+      ## Visual QA
+      - [ ] Dark mode toggle works on all screens
+      - [ ] Mobile responsive at 375px viewport
+      - [ ] No broken layouts, text overflow, or cutoff
+      - [ ] Empty states display
+      - [ ] Loading states display
+      
+      ## Cross-browser
+      - [ ] Chrome (latest)
+      - [ ] Safari (if available)
+      
+      ## Security
+      - [ ] No exposed API keys in console
+      - [ ] Auth tokens secure (httpOnly cookies)
+      - [ ] CSRF protection on forms
+      - [ ] Content Security Policy enforced
+    tags:
+      - regression-test
+      - retaileros
+      - critical
+
+  - id: "qa-critical-blockers"
+    title: "Current Critical Blockers"
+    category: "issue-tracking"
+    status: "active"
+    content: |
+      **KHO-214**: /schemes endpoint returns HTTP 502
+      - Impact: Blocks scheme management access
+      - Priority: CRITICAL
+      - Status: Blocked pending DevOps server access
+      - Root cause: Unknown (suspected recent code changes)
+      
+      **KHO-215**: Missing security headers
+      - Impact: Security vulnerability
+      - Priority: HIGH
+      - Status: In review (code ready, awaiting deployment)
+      - Missing headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+      
+      **KHO-216**: Auth validation bypass
+      - Impact: Security vulnerability
+      - Priority: HIGH
+      - Status: DONE (fixed and verified)
+    tags:
+      - blockers
+      - critical
+      - retaileros
+
+  - id: "qa-verified-fixes"
+    title: "Verified Fixes This Cycle"
+    category: "verification-log"
+    status: "active"
+    content: |
+      **KHO-207: Login page fix**
+      - Fixed: Placeholder updated to correct demo store code
+      - Try Demo section added with credentials
+      - Verified: Production deployment confirmed
+      - Status: Ready for user testing
+      
+      **KHO-216: Auth validation**
+      - Fixed: Backend validation corrected
+      - Status: DONE
+      - Verified: System accepts valid tokens, rejects invalid
+    tags:
+      - verified
+      - retaileros
+      - completed
+
+  - id: "qa-tools-and-techniques"
+    title: "QA Tools & Techniques"
+    category: "reference"
+    status: "active"
+    content: |
+      ## Command-line Testing
+      
+      ### Site Availability
+      ```bash
+      curl -I https://example.com  # Check headers
+      curl -w "%{http_code}" -o /dev/null https://example.com  # Status code
+      ```
+      
+      ### Security Headers
+      ```bash
+      curl -I https://example.com | grep -i "x-frame\|x-content\|strict-transport\|csp"
+      ```
+      
+      ### Content Verification
+      ```bash
+      curl -s https://example.com | grep -o 'placeholder="[^"]*"'  # Find placeholders
+      curl -s https://example.com | grep -c '<img'  # Count images
+      ```
+      
+      ### SSL/HTTPS
+      ```bash
+      openssl s_client -connect example.com:443  # Check certificate
+      ```
+      
+      ### DNS
+      ```bash
+      nslookup domain.com  # DNS resolution
+      ```
+      
+      ## Browser Testing (When Available)
+      - Lighthouse audits (Chrome DevTools)
+      - Accessibility audit (Chrome DevTools)
+      - Mobile viewport testing (DevTools mobile emulation)
+      - Console error checking
+      
+      ## Data Collection
+      - Screenshot evidence for bug reports
+      - HTTP response codes
+      - Error logs
+      - User session recordings (if applicable)
+    tags:
+      - tools
+      - reference
+      - procedures
+
+  - id: "qa-bug-report-template"
+    title: "Bug Report Standard Template"
+    category: "reference"
+    status: "active"
+    content: |
+      ## Bug Report Standard
+      
+      **What**: One-line summary of the issue
+      
+      **Steps to Reproduce**: Numbered list
+      1. Navigate to...
+      2. Click on...
+      3. Observe...
+      
+      **Expected**: What should happen
+      
+      **Actual**: What actually happened
+      
+      **Environment**: Browser, device, URL, timestamp
+      
+      **Evidence**: Screenshot, log output, or link
+      
+      **Severity**: Critical | High | Medium | Low
+      - Critical: Blocks users from core functionality
+      - High: Degrades user experience significantly
+      - Medium: Cosmetic or minor functionality issue
+      - Low: Nice to have fix
+      
+      **Impact**: Who is affected (all users, specific browser, etc.)
+    tags:
+      - bug-reporting
+      - standards
+      - template

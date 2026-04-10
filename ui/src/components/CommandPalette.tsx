@@ -60,12 +60,12 @@ export function CommandPalette() {
   const { data: issues = [] } = useQuery({
     queryKey: queryKeys.issues.list(selectedCompanyId!),
     queryFn: () => issuesApi.list(selectedCompanyId!),
-    enabled: !!selectedCompanyId && open,
+    enabled: !!selectedCompanyId && open && searchQuery.length === 0,
   });
 
   const { data: searchedIssues = [] } = useQuery({
-    queryKey: queryKeys.issues.search(selectedCompanyId!, searchQuery),
-    queryFn: () => issuesApi.list(selectedCompanyId!, { q: searchQuery }),
+    queryKey: queryKeys.issues.search(selectedCompanyId!, searchQuery, undefined, 10),
+    queryFn: () => issuesApi.list(selectedCompanyId!, { q: searchQuery, limit: 10 }),
     enabled: !!selectedCompanyId && open && searchQuery.length > 0,
   });
 
@@ -179,7 +179,7 @@ export function CommandPalette() {
         {visibleIssues.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Tasks">
+            <CommandGroup heading="Issues">
               {visibleIssues.slice(0, 10).map((issue) => (
                 <CommandItem
                   key={issue.id}

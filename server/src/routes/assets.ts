@@ -5,9 +5,9 @@ import { JSDOM } from "jsdom";
 import type { Db } from "@paperclipai/db";
 import { createAssetImageMetadataSchema } from "@paperclipai/shared";
 import type { StorageService } from "../storage/types.js";
-import { agentService, assetService, logActivity } from "../services/index.js";
+import { assetService, logActivity } from "../services/index.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
-import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
+import { assertCompanyAccess, getActorInfo } from "./authz.js";
 const SVG_CONTENT_TYPE = "image/svg+xml";
 const ALLOWED_COMPANY_LOGO_CONTENT_TYPES = new Set([
   "image/png",
@@ -334,138 +334,6 @@ export function assetRoutes(db: Db, storage: StorageService) {
       next(err);
     });
     object.stream.pipe(res);
-  });
-
-  // --- Agent avatar upload / delete ---
-
-  const ALLOWED_AVATAR_CONTENT_TYPES = new Set([
-    "image/png",
-    "image/jpeg",
-    "image/jpg",
-    "image/webp",
-    "image/gif",
-    SVG_CONTENT_TYPE,
-  ]);
-
-  const avatarUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 1 },
-  });
-
-  const agents = agentService(db);
-
-  router.post("/agents/:id/avatar", async (req, res) => {
-    assertBoard(req);
-    const id = req.params.id as string;
-    const agent = await agents.getById(id);
-    if (!agent) {
-      res.status(404).json({ error: "Agent not found" });
-      return;
-    }
-    assertCompanyAccess(req, agent.companyId);
-
-    try {
-      await runSingleFileUpload(avatarUpload, req, res);
-    } catch (err) {
-      if (err instanceof multer.MulterError) {
-        if (err.code === "LIMIT_FILE_SIZE") {
-          res.status(422).json({ error: `Image exceeds ${MAX_ATTACHMENT_BYTES} bytes` });
-          return;
-        }
-        res.status(400).json({ error: err.message });
-        return;
-      }
-      throw err;
-    }
-
-    const file = (req as Request & { file?: { mimetype: string; buffer: Buffer; originalname: string } }).file;
-    if (!file) {
-      res.status(400).json({ error: "Missing file field 'file'" });
-      return;
-    }
-
-    const contentType = (file.mimetype || "").toLowerCase();
-    if (!ALLOWED_AVATAR_CONTENT_TYPES.has(contentType)) {
-      res.status(422).json({ error: `Unsupported image type: ${contentType || "unknown"}` });
-      return;
-    }
-
-    let fileBody = file.buffer;
-    if (contentType === SVG_CONTENT_TYPE) {
-      const sanitized = sanitizeSvgBuffer(file.buffer);
-      if (!sanitized || sanitized.length <= 0) {
-        res.status(422).json({ error: "SVG could not be sanitized" });
-        return;
-      }
-      fileBody = sanitized;
-    }
-
-    if (fileBody.length <= 0) {
-      res.status(422).json({ error: "Image is empty" });
-      return;
-    }
-
-    const actor = getActorInfo(req);
-    const stored = await storage.putFile({
-      companyId: agent.companyId,
-      namespace: "assets/agent-avatars",
-      originalFilename: file.originalname || null,
-      contentType,
-      body: fileBody,
-    });
-
-    const asset = await svc.create(agent.companyId, {
-      provider: stored.provider,
-      objectKey: stored.objectKey,
-      contentType: stored.contentType,
-      byteSize: stored.byteSize,
-      sha256: stored.sha256,
-      originalFilename: stored.originalFilename,
-      createdByUserId: actor.actorType === "user" ? actor.actorId : null,
-    });
-
-    const updated = await agents.setAvatar(id, asset.id);
-
-    await logActivity(db, {
-      companyId: agent.companyId,
-      actorType: actor.actorType,
-      actorId: actor.actorId,
-      agentId: id,
-      runId: actor.runId,
-      action: "agent.avatar.updated",
-      entityType: "agent",
-      entityId: id,
-      details: { assetId: asset.id },
-    });
-
-    res.json(updated);
-  });
-
-  router.delete("/agents/:id/avatar", async (req, res) => {
-    assertBoard(req);
-    const id = req.params.id as string;
-    const agent = await agents.getById(id);
-    if (!agent) {
-      res.status(404).json({ error: "Agent not found" });
-      return;
-    }
-    assertCompanyAccess(req, agent.companyId);
-
-    const updated = await agents.removeAvatar(id);
-
-    const actor = getActorInfo(req);
-    await logActivity(db, {
-      companyId: agent.companyId,
-      actorType: actor.actorType,
-      actorId: actor.actorId,
-      agentId: id,
-      runId: actor.runId,
-      action: "agent.avatar.removed",
-      entityType: "agent",
-      entityId: id,
-    });
-
-    res.json(updated);
   });
 
   return router;

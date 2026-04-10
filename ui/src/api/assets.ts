@@ -4,38 +4,36 @@ import { api } from "./client";
 export interface CompanyAsset {
   id: string;
   companyId: string;
-  provider: string;
   objectKey: string;
+  originalFilename: string | null;
   contentType: string;
   byteSize: number;
-  sha256: string;
-  originalFilename: string | null;
-  createdByAgentId: string | null;
-  createdByUserId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  agentName: string | null;
   contentPath: string;
+  agentName: string | null;
+  namespace?: string | null;
+  provider?: string;
+  sha256?: string;
+  createdByAgentId?: string | null;
+  createdByUserId?: string | null;
+  updatedAt?: string;
+  createdAt: string;
 }
 
 export interface WorkspaceFile {
   id: string;
-  agentId: string;
-  agentName: string;
   companyId: string;
   filename: string;
   relativePath: string;
   contentType: string;
   byteSize: number;
-  createdAt: string;
-  modifiedAt: string;
   contentPath: string;
+  agentName: string;
+  agentId: string;
+  modifiedAt: string;
+  createdAt: string;
 }
 
 export const assetsApi = {
-  list: (companyId: string) =>
-    api.get<CompanyAsset[]>(`/companies/${companyId}/assets`),
-
   uploadImage: async (companyId: string, file: File, namespace?: string) => {
     // Read file data into memory eagerly so the fetch body is self-contained.
     // Clipboard-paste File objects reference transient data that the browser may
@@ -60,7 +58,8 @@ export const assetsApi = {
     form.append("file", safeFile);
     return api.postForm<AssetImage>(`/companies/${companyId}/logo`, form);
   },
-
-  listWorkspaceFiles: (companyId: string) =>
-    api.get<WorkspaceFile[]>(`/companies/${companyId}/workspace-files`),
+  list: (companyId: string) =>
+    api.get<CompanyAsset[]>(`/companies/${companyId}/assets`),
+  listWorkspaceFiles: (workspaceId: string) =>
+    api.get<WorkspaceFile[]>(`/execution-workspaces/${workspaceId}/files`),
 };

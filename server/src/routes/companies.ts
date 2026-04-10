@@ -1,14 +1,18 @@
 import { Router, type Request } from "express";
 import type { Db } from "@paperclipai/db";
 import {
+  DEFAULT_FEEDBACK_DATA_SHARING_TERMS_VERSION,
   companyPortabilityExportSchema,
   companyPortabilityImportSchema,
   companyPortabilityPreviewSchema,
   createCompanySchema,
+  feedbackTargetTypeSchema,
+  feedbackTraceStatusSchema,
+  feedbackVoteValueSchema,
   updateCompanyBrandingSchema,
   updateCompanySchema,
 } from "@paperclipai/shared";
-import { forbidden } from "../errors.js";
+import { badRequest, forbidden } from "../errors.js";
 import { validate } from "../middleware/validate.js";
 import {
   accessService,
@@ -16,6 +20,7 @@ import {
   budgetService,
   companyPortabilityService,
   companyService,
+  feedbackService,
   logActivity,
 } from "../services/index.js";
 import type { StorageService } from "../storage/types.js";
@@ -28,6 +33,20 @@ export function companyRoutes(db: Db, storage?: StorageService) {
   const portability = companyPortabilityService(db, storage);
   const access = accessService(db);
   const budgets = budgetService(db);
+  const feedback = feedbackService(db);
+
+  function parseBooleanQuery(value: unknown) {
+    return value === true || value === "true" || value === "1";
+  }
+
+  function parseDateQuery(value: unknown, field: string) {
+    if (typeof value !== "string" || value.trim().length === 0) return undefined;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      throw badRequest(`Invalid ${field} query value`);
+    }
+    return parsed;
+  }
 
   async function assertCanUpdateBranding(req: Request, companyId: string) {
     assertCompanyAccess(req, companyId);
@@ -102,6 +121,34 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       return;
     }
     res.json(company);
+  });
+
+  router.get("/:companyId/feedback-traces", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    assertBoard(req);
+
+    const targetTypeRaw = typeof req.query.targetType === "string" ? req.query.targetType : undefined;
+    const voteRaw = typeof req.query.vote === "string" ? req.query.vote : undefined;
+    const statusRaw = typeof req.query.status === "string" ? req.query.status : undefined;
+    const issueId = typeof req.query.issueId === "string" && req.query.issueId.trim().length > 0 ? req.query.issueId : undefined;
+    const projectId = typeof req.query.projectId === "string" && req.query.projectId.trim().length > 0
+      ? req.query.projectId
+      : undefined;
+
+    const traces = await feedback.listFeedbackTraces({
+      companyId,
+      issueId,
+      projectId,
+      targetType: targetTypeRaw ? feedbackTargetTypeSchema.parse(targetTypeRaw) : undefined,
+      vote: voteRaw ? feedbackVoteValueSchema.parse(voteRaw) : undefined,
+      status: statusRaw ? feedbackTraceStatusSchema.parse(statusRaw) : undefined,
+      from: parseDateQuery(req.query.from, "from"),
+      to: parseDateQuery(req.query.to, "to"),
+      sharedOnly: parseBooleanQuery(req.query.sharedOnly),
+      includePayload: parseBooleanQuery(req.query.includePayload),
+    });
+    res.json(traces);
   });
 
   router.post("/:companyId/export", validate(companyPortabilityExportSchema), async (req, res) => {
@@ -246,6 +293,11 @@ export function companyRoutes(db: Db, storage?: StorageService) {
     assertCompanyAccess(req, companyId);
 
     const actor = getActorInfo(req);
+    const existingCompany = await svc.getById(companyId);
+    if (!existingCompany) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
     let body: Record<string, unknown>;
 
     if (req.actor.type === "agent") {
@@ -262,6 +314,18 @@ export function companyRoutes(db: Db, storage?: StorageService) {
     } else {
       assertBoard(req);
       body = updateCompanySchema.parse(req.body);
+
+      if (body.feedbackDataSharingEnabled === true && !existingCompany.feedbackDataSharingEnabled) {
+        body = {
+          ...body,
+          feedbackDataSharingConsentAt: new Date(),
+          feedbackDataSharingConsentByUserId: req.actor.userId ?? "local-board",
+          feedbackDataSharingTermsVersion:
+            typeof body.feedbackDataSharingTermsVersion === "string" && body.feedbackDataSharingTermsVersion.length > 0
+              ? body.feedbackDataSharingTermsVersion
+              : DEFAULT_FEEDBACK_DATA_SHARING_TERMS_VERSION,
+        };
+      }
     }
 
     const company = await svc.update(companyId, body);
@@ -306,75 +370,6 @@ export function companyRoutes(db: Db, storage?: StorageService) {
     res.json(company);
   });
 
-  // ---- Company-level provider API keys ----
-  router.get("/:companyId/provider-api-keys", async (req, res) => {
-    assertBoard(req);
-    const companyId = req.params.companyId as string;
-    assertCompanyAccess(req, companyId);
-    const company = await svc.getById(companyId);
-    if (!company) { res.status(404).json({ error: "Company not found" }); return; }
-    // Return key names with masked values (never expose full keys)
-    const keys = (company.providerApiKeys ?? {}) as Record<string, string>;
-    const masked: Record<string, string> = {};
-    for (const [k, v] of Object.entries(keys)) {
-      masked[k] = typeof v === "string" && v.length > 8 ? v.slice(0, 6) + "..." + v.slice(-4) : v ? "****" : "";
-    }
-    res.json({ keys: masked, providers: Object.keys(keys) });
-  });
-
-  router.put("/:companyId/provider-api-keys", async (req, res) => {
-    assertBoard(req);
-    const companyId = req.params.companyId as string;
-    assertCompanyAccess(req, companyId);
-    const { provider, apiKey } = req.body as { provider: string; apiKey: string };
-    if (!provider || typeof provider !== "string") { res.status(400).json({ error: "provider is required" }); return; }
-    if (!apiKey || typeof apiKey !== "string") { res.status(400).json({ error: "apiKey is required" }); return; }
-    const company = await svc.getById(companyId);
-    if (!company) { res.status(404).json({ error: "Company not found" }); return; }
-    const existing = (company.providerApiKeys ?? {}) as Record<string, string>;
-    existing[provider] = apiKey;
-    const updated = await svc.update(companyId, { providerApiKeys: existing } as any);
-    const actor = getActorInfo(req);
-    await logActivity(db, { companyId, actorType: actor.actorType, actorId: actor.actorId, action: "company.provider_api_key_set", entityType: "company", entityId: companyId, details: { provider } });
-    res.json({ ok: true, provider });
-  });
-
-  router.delete("/:companyId/provider-api-keys/:provider", async (req, res) => {
-    assertBoard(req);
-    const companyId = req.params.companyId as string;
-    assertCompanyAccess(req, companyId);
-    const provider = req.params.provider as string;
-    const company = await svc.getById(companyId);
-    if (!company) { res.status(404).json({ error: "Company not found" }); return; }
-    const existing = (company.providerApiKeys ?? {}) as Record<string, string>;
-    delete existing[provider];
-    await svc.update(companyId, { providerApiKeys: existing } as any);
-    const actor = getActorInfo(req);
-    await logActivity(db, { companyId, actorType: actor.actorType, actorId: actor.actorId, action: "company.provider_api_key_removed", entityType: "company", entityId: companyId, details: { provider } });
-    res.json({ ok: true });
-  });
-
-  // ---- Company-level model policy ----
-  router.get("/:companyId/model-policy", async (req, res) => {
-    const companyId = req.params.companyId as string;
-    assertCompanyAccess(req, companyId);
-    const company = await svc.getById(companyId);
-    if (!company) { res.status(404).json({ error: "Company not found" }); return; }
-    res.json({ policy: company.modelPolicy ?? {} });
-  });
-
-  router.put("/:companyId/model-policy", async (req, res) => {
-    assertBoard(req);
-    const companyId = req.params.companyId as string;
-    assertCompanyAccess(req, companyId);
-    const { policy } = req.body as { policy: Record<string, string> };
-    if (!policy || typeof policy !== "object") { res.status(400).json({ error: "policy object is required" }); return; }
-    await svc.update(companyId, { modelPolicy: policy } as any);
-    const actor = getActorInfo(req);
-    await logActivity(db, { companyId, actorType: actor.actorType, actorId: actor.actorId, action: "company.model_policy_updated", entityType: "company", entityId: companyId, details: { policy } });
-    res.json({ ok: true, policy });
-  });
-
   router.post("/:companyId/archive", async (req, res) => {
     assertBoard(req);
     const companyId = req.params.companyId as string;
@@ -404,6 +399,62 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       res.status(404).json({ error: "Company not found" });
       return;
     }
+    res.json({ ok: true });
+  });
+
+  // Provider API Keys routes (Mi1k customization)
+  router.get("/:companyId/provider-api-keys", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const company = await svc.getById(companyId);
+    if (!company) { res.status(404).json({ error: "Company not found" }); return; }
+    const keys = ((company as unknown as Record<string, unknown>).providerApiKeys ?? {}) as Record<string, string>;
+    res.json({ keys });
+  });
+
+  router.put("/:companyId/provider-api-keys", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const { provider, value } = req.body as { provider: string; value: string };
+    const company = await svc.getById(companyId);
+    if (!company) { res.status(404).json({ error: "Company not found" }); return; }
+    const existing = ((company as unknown as Record<string, unknown>).providerApiKeys ?? {}) as Record<string, string>;
+    existing[provider] = value;
+    await svc.update(companyId, { providerApiKeys: existing } as Parameters<typeof svc.update>[1]);
+    res.json({ ok: true });
+  });
+
+  router.delete("/:companyId/provider-api-keys/:provider", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const { provider } = req.params;
+    const company = await svc.getById(companyId);
+    if (!company) { res.status(404).json({ error: "Company not found" }); return; }
+    const existing = ((company as unknown as Record<string, unknown>).providerApiKeys ?? {}) as Record<string, string>;
+    delete existing[provider];
+    await svc.update(companyId, { providerApiKeys: existing } as Parameters<typeof svc.update>[1]);
+    res.json({ ok: true });
+  });
+
+  // Model Policy routes (Mi1k customization)
+  router.get("/:companyId/model-policy", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const company = await svc.getById(companyId);
+    if (!company) { res.status(404).json({ error: "Company not found" }); return; }
+    res.json({ policy: (company as unknown as Record<string, unknown>).modelPolicy ?? {} });
+  });
+
+  router.put("/:companyId/model-policy", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const { policy } = req.body as { policy: Record<string, unknown> };
+    await svc.update(companyId, { modelPolicy: policy } as Parameters<typeof svc.update>[1]);
     res.json({ ok: true });
   });
 
